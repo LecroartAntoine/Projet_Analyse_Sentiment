@@ -160,3 +160,5 @@ cython_debug/
 #.idea/
 Modélisation/glove.6B.300d.txt
 Modélisation/raw_dataset.csv
+
+*.h5

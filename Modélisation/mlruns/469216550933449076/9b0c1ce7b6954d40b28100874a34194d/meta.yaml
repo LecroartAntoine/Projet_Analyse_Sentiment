@@ -1,0 +1,15 @@
+artifact_uri: file:///c:/Users/LeBonCassoulet/Documents/GitHub/Projet_Analyse_Sentiment/Mod%C3%A9lisation/mlruns/469216550933449076/9b0c1ce7b6954d40b28100874a34194d/artifacts
+end_time: 1747997408546
+entry_point_name: ''
+experiment_id: '469216550933449076'
+lifecycle_stage: active
+run_id: 9b0c1ce7b6954d40b28100874a34194d
+run_name: BERT_distilbert-base-uncased
+run_uuid: 9b0c1ce7b6954d40b28100874a34194d
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1747997406666
+status: 4
+tags: []
+user_id: LeBonCassoulet
