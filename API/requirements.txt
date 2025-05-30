@@ -1,9 +1,7 @@
 azure-functions
-fastapi
-uvicorn
+
 tensorflow-cpu
 pydantic
-httpx
 opencensus
 opencensus-ext-azure
 pytest

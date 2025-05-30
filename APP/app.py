@@ -1,8 +1,8 @@
 import streamlit as st
 import requests # Pour appeler votre API déployée
 
-API_URL = "https://airparadisapi.azurewebsites.net/predict" # URL de votre API déployée
-FEEDBACK_URL = "https://airparadisapi.azurewebsites.net/feedback"
+API_URL = "http://localhost:7071/predict"  # https://airparadisapi.azurewebsites.net
+FEEDBACK_URL = "http://localhost:7071/feedback"
 
 st.title("Testeur de Sentiment Air Paradis")
 
