@@ -6,3 +6,4 @@ pydantic
 httpx
 opencensus
 opencensus-ext-azure
+pytest
