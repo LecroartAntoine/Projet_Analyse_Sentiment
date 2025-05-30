@@ -72,15 +72,11 @@ class FeedbackInput(BaseModel):
     predicted_sentiment: str
     actual_sentiment_is_different: bool
 
-    
-
-# Create a FunctionApp instance.
-# You can set a default authorization level for all HTTP functions here.
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
 @app.function_name(name="PREDICT")
 @app.route(route="predict", methods=[func.HttpMethod.POST])
-def predict_sentiment(payload: func.HttpRequest) -> func.HttpResponse:
+def predict_sentiment(req: func.HttpRequest) -> func.HttpResponse:
     logger.info("Python HTTP trigger function processed a /predict request.")
 
     if model is None or tokenizer is None:
@@ -92,7 +88,7 @@ def predict_sentiment(payload: func.HttpRequest) -> func.HttpResponse:
         )
 
     try:
-        req_body = payload.get_json()
+        req_body = req.get_json()
     except ValueError:
         logger.error("Invalid JSON format in request body.")
         return func.HttpResponse(
@@ -152,7 +148,7 @@ def predict_sentiment(payload: func.HttpRequest) -> func.HttpResponse:
 
 @app.function_name(name="WELCOME")
 @app.route(route="/", methods=[func.HttpMethod.GET]) # Or route="" for the root
-def root_endpoint(payload: func.HttpRequest) -> func.HttpResponse:
+def root_endpoint(req: func.HttpRequest) -> func.HttpResponse:
     logger.info("Python HTTP trigger function processed a / request.")
     return func.HttpResponse(
         json.dumps({"message": "API de prédiction de sentiment pour Air Paradis"}),
@@ -161,11 +157,11 @@ def root_endpoint(payload: func.HttpRequest) -> func.HttpResponse:
 
 @app.function_name(name="FEEDBACK")
 @app.route(route="feedback", methods=[func.HttpMethod.POST])
-def log_feedback(payload: func.HttpRequest) -> func.HttpResponse:
+def log_feedback(req: func.HttpRequest) -> func.HttpResponse:
     logger.info("Python HTTP trigger function processed a /feedback request .")
 
     try:
-        req_body = payload.get_json()
+        req_body = req.get_json()
     except ValueError:
         logger.error("Invalid JSON format in feedback request body.")
         return func.HttpResponse(
