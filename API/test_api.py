@@ -41,7 +41,7 @@ def test_read_main():
 
     assert response.status_code == 200
     response_json = json.loads(response.get_body().decode())
-    assert response_json == {"message": "API de prédiction de sentiment pour Air Paradis (Azure Function v2)"}
+    assert response_json == {"message": "API de prédiction de sentiment pour Air Paradis"}
 
 def test_predict_positive_sentiment():
     payload = {"text": "I love this company ! the service was excellent !!!"}

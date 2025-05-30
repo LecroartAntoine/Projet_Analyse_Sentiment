@@ -162,7 +162,7 @@ def predict_sentiment(req: func.HttpRequest) -> func.HttpResponse:
 def root_endpoint(req: func.HttpRequest) -> func.HttpResponse:
     logger.info("Python HTTP trigger function processed a / request.")
     return func.HttpResponse(
-        json.dumps({"message": "API de prediction de sentiment pour Air Paradis)"}),
+        json.dumps({"message": "API de prédiction de sentiment pour Air Paradis"}),
         mimetype="application/json"
     )
 
