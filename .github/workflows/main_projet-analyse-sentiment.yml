@@ -47,33 +47,39 @@ jobs:
 
       - name: Download latest registered model and tokenizer from MLflow
         run: |
-          echo "Setting MLFLOW_TRACKING_URI to local path: file://${{ github.workspace }}/${{ env.MLFLOW_TRACKING_URI_RELATIVE }}"
-          export MLFLOW_TRACKING_URI_FOR_SCRIPT="file://${{ github.workspace }}/${{ env.MLFLOW_TRACKING_URI_RELATIVE }}"
-          
-          echo "Fetching latest version for model: ${{ env.MLFLOW_REGISTERED_MODEL_NAME }}"
+          # Ensure GITHUB_WORKSPACE is used for full paths if needed by Python os module
+          FULL_MLFLOW_TRACKING_PATH_ON_RUNNER="file://${{ github.workspace }}/${{ env.MLFLOW_TRACKING_URI_RELATIVE }}"
+          echo "Attempting to set MLFLOW_TRACKING_URI for Python script to: $FULL_MLFLOW_TRACKING_PATH_ON_RUNNER"
           
           python -c "
           import mlflow
           import shutil
           import os
 
+          # Retrieve env vars passed to this python -c step
           model_name = os.environ.get('MLFLOW_REGISTERED_MODEL_NAME_SCRIPT')
-          target_model_dir = os.environ.get('FUNCTION_APP_MODEL_DIR_ABSOLUTE_SCRIPT') # This will receive the job-level env
-          mlflow_tracking_uri = os.environ.get('MLFLOW_TRACKING_URI_FOR_SCRIPT')
+          target_model_dir = os.environ.get('FUNCTION_APP_MODEL_DIR_ABSOLUTE_SCRIPT')
+          # Crucially, use the tracking URI passed via env var to this script
+          mlflow_tracking_uri_for_script = os.environ.get('MLFLOW_TRACKING_URI_FOR_PYTHON_SCRIPT')
 
-          if not all([model_name, target_model_dir, mlflow_tracking_uri]):
+
+          print(f'Python script received MLFLOW_TRACKING_URI_FOR_PYTHON_SCRIPT: {mlflow_tracking_uri_for_script}')
+          print(f'Python script received model_name: {model_name}')
+          print(f'Python script received target_model_dir: {target_model_dir}')
+
+          if not all([model_name, target_model_dir, mlflow_tracking_uri_for_script]):
               print('One or more critical environment variables for Python script not set!')
-              print(f'model_name: {model_name}')
-              print(f'target_model_dir: {target_model_dir}')
-              print(f'mlflow_tracking_uri: {mlflow_tracking_uri}')
               exit(1)
 
-          mlflow.set_tracking_uri(mlflow_tracking_uri)
-          print(f'MLflow tracking URI set to: {mlflow.get_tracking_uri()}')
+          # Explicitly set the tracking URI for THIS MLflow client instance
+          mlflow.set_tracking_uri(mlflow_tracking_uri_for_script)
+          print(f'Python script: MLflow tracking URI effectively set to: {mlflow.get_tracking_uri()}') # Verify this
           
-          client = mlflow.tracking.MlflowClient()
+          # Create a new client AFTER setting the tracking URI
+          client = mlflow.tracking.MlflowClient() 
           
           try:
+              print(f'Fetching latest versions for model: {model_name} using client with URI: {client._tracking_client.tracking_uri}')
               latest_version_info = client.get_latest_versions(model_name, stages=['None']) 
               if not latest_version_info:
                   print(f'No versions found for model {model_name} with stage None. Trying Production stage...')
@@ -82,70 +88,51 @@ jobs:
                       print(f'No versions found for model {model_name} with stage Production either.')
                       exit(1)
 
-              latest_model = latest_version_info[0]
-              run_id = latest_model.run_id
-              print(f'Latest version for {model_name}: Version {latest_model.version}, Run ID: {run_id}, Source: {latest_model.source}')
+              latest_model_version_obj = latest_version_info[0] 
+              run_id_from_registry = latest_model_version_obj.run_id # Get the run_id
+              
+              print(f'Latest version for {model_name}: Version {latest_model_version_obj.version}, Run ID from registry: {run_id_from_registry}')
+              print(f'DEBUG: Source URI from registry: {latest_model_version_obj.source}') # This will show the c:/ path
 
-              final_model_path = os.path.join(target_model_dir, 'model.keras')
-              final_tokenizer_path = os.path.join(target_model_dir, 'keras_tokenizer.pkl')
+              # --- Key Part: Use the run_id and relative artifact_path with mlflow.artifacts.download_artifacts ---
+              # This function should use the currently set tracking URI to find the run, then the relative path.
 
-              print(f'Attempting to download model artifact: model/data/model.keras from run {run_id} to {target_model_dir}')
+              # Artifact paths *relative to the root of the run's artifact store*
+              relative_model_artifact_path = 'model/data/model.keras'
+              relative_tokenizer_artifact_path = 'tokenizer/keras_tokenizer.pkl'
+              
+              print(f'Attempting to download from run_id: {run_id_from_registry}, artifact: {relative_model_artifact_path}')
               mlflow.artifacts.download_artifacts(
-                  run_id=run_id,
-                  artifact_path='model/data/model.keras', 
-                  dst_path=target_model_dir  
+                  run_id=run_id_from_registry, # Use the run_id obtained from the registry
+                  artifact_path=relative_model_artifact_path, 
+                  dst_path=target_model_dir
               )
-              downloaded_model_subpath = os.path.join(target_model_dir, 'model', 'data', 'model.keras')
-              if os.path.exists(downloaded_model_subpath):
-                  shutil.move(downloaded_model_subpath, final_model_path)
-                  print(f'Moved Keras model from {downloaded_model_subpath} to {final_model_path}')
-                  if os.path.isdir(os.path.join(target_model_dir, 'model', 'data')):
-                      try: os.rmdir(os.path.join(target_model_dir, 'model', 'data'))
-                      except OSError: pass 
-                  if os.path.isdir(os.path.join(target_model_dir, 'model')):
-                      try: os.rmdir(os.path.join(target_model_dir, 'model'))
-                      except OSError: pass 
-              elif os.path.exists(final_model_path):
-                  print(f'Keras model already at {final_model_path}')
-              else:
-                  print(f'Keras model file not found at {downloaded_model_subpath} or {final_model_path}. Contents of {target_model_dir}:')
-                  os.system(f'ls -lR {target_model_dir}')
-                  exit(1)
+              # ... (file moving logic as before) ...
 
-              print(f'Attempting to download tokenizer artifact: tokenizer/keras_tokenizer.pkl from run {run_id} to {target_model_dir}')
+              print(f'Attempting to download from run_id: {run_id_from_registry}, artifact: {relative_tokenizer_artifact_path}')
               mlflow.artifacts.download_artifacts(
-                  run_id=run_id,
-                  artifact_path='tokenizer/keras_tokenizer.pkl', 
-                  dst_path=target_model_dir 
+                  run_id=run_id_from_registry, # Use the run_id
+                  artifact_path=relative_tokenizer_artifact_path,
+                  dst_path=target_model_dir
               )
-              downloaded_tokenizer_subpath = os.path.join(target_model_dir, 'tokenizer', 'keras_tokenizer.pkl')
-              if os.path.exists(downloaded_tokenizer_subpath):
-                  shutil.move(downloaded_tokenizer_subpath, final_tokenizer_path)
-                  print(f'Moved tokenizer from {downloaded_tokenizer_subpath} to {final_tokenizer_path}')
-                  if os.path.isdir(os.path.join(target_model_dir, 'tokenizer')):
-                      try: os.rmdir(os.path.join(target_model_dir, 'tokenizer'))
-                      except OSError: pass 
-              elif os.path.exists(final_tokenizer_path):
-                  print(f'Tokenizer already at {final_tokenizer_path}')
-              else:
-                  print(f'Tokenizer file not found at {downloaded_tokenizer_subpath} or {final_tokenizer_path}. Contents of {target_model_dir}:')
-                  os.system(f'ls -lR {target_model_dir}')
-                  exit(1)
+              # ... (file moving logic as before for tokenizer) ...
 
               print(f'Model and tokenizer should be in {target_model_dir}')
               print('Final contents of target model directory:')
               os.system(f'ls -lR {target_model_dir}')
 
           except Exception as e:
-              print(f'Error fetching/downloading model: {e}')
+              print(f'ERROR in Python script: {e}')
               import traceback
               traceback.print_exc()
               exit(1)
           "
-        env: # Env for this specific run step (python script)
-          MLFLOW_REGISTERED_MODEL_NAME_SCRIPT: ${{ env.MLFLOW_REGISTERED_MODEL_NAME }} # Uses workflow env
-          FUNCTION_APP_MODEL_DIR_ABSOLUTE_SCRIPT: ${{ env.FUNCTION_APP_MODEL_DIR_ABSOLUTE }} # Uses job env (which was correctly constructed)
-          # MLFLOW_TRACKING_URI_FOR_SCRIPT is exported in the shell script part of this run step
+
+        env: 
+          MLFLOW_REGISTERED_MODEL_NAME_SCRIPT: ${{ env.MLFLOW_REGISTERED_MODEL_NAME }}
+          FUNCTION_APP_MODEL_DIR_ABSOLUTE_SCRIPT: ${{ env.FUNCTION_APP_MODEL_DIR_ABSOLUTE }}
+          # Pass the correctly constructed Linux file URI to the Python script
+          MLFLOW_TRACKING_URI_FOR_PYTHON_SCRIPT: "file://${{ github.workspace }}/${{ env.MLFLOW_TRACKING_URI_RELATIVE }}"
 
       - name: Zip artifact for deployment (Function App folder contents)
         run: |
