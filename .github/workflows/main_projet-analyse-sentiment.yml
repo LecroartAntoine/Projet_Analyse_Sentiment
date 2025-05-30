@@ -8,7 +8,7 @@ on:
 
 env: # Workflow-level environment variables, accessible in all jobs
   PYTHON_VERSION: '3.10'
-  AZURE_FUNCTIONAPP_ROOT_FOLDER: 'api' # Base path for function app code
+  AZURE_FUNCTIONAPP_ROOT_FOLDER: 'API' # Base path for function app code
   MLFLOW_REGISTERED_MODEL_NAME: 'MODEL_ADVANCED'
   MLFLOW_TRACKING_URI_RELATIVE: 'Modélisation/mlruns' 
   ARTIFACT_ZIP_NAME: 'python-app.zip'
@@ -21,7 +21,7 @@ jobs:
     env: # Job-level environment variables for the 'build' job
         # We reconstruct the path or use github.workspace directly
         # AZURE_FUNCTIONAPP_ROOT_FOLDER_JOB: 'api' # If you wanted to override or specify differently at job level
-        FUNCTION_APP_MODEL_DIR_ABSOLUTE: ${{ github.workspace }}/api/model # Construct full path directly
+        FUNCTION_APP_MODEL_DIR_ABSOLUTE: ${{ github.workspace }}/API/model # Construct full path directly
                                                                       # Using the known value 'api' from workflow env
 
     steps:
