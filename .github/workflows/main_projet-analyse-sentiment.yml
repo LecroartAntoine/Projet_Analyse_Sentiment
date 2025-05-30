@@ -8,7 +8,7 @@ on:
 
 env: # Workflow-level environment variables, accessible in all jobs
   PYTHON_VERSION: '3.10'
-  AZURE_FUNCTIONAPP_ROOT_FOLDER: 'api'
+  AZURE_FUNCTIONAPP_ROOT_FOLDER: 'api' # Base path for function app code
   MLFLOW_REGISTERED_MODEL_NAME: 'MODEL_ADVANCED'
   MLFLOW_TRACKING_URI_RELATIVE: 'Modélisation/mlruns' 
   ARTIFACT_ZIP_NAME: 'python-app.zip'
@@ -16,11 +16,13 @@ env: # Workflow-level environment variables, accessible in all jobs
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions: # Permissions for the GITHUB_TOKEN for this job
+    permissions: 
       contents: read
     env: # Job-level environment variables for the 'build' job
-        FUNCTION_APP_MODEL_DIR_RELATIVE: ${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }}/model 
-        FUNCTION_APP_MODEL_DIR_ABSOLUTE: ${{ github.workspace }}/${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }}/model
+        # We reconstruct the path or use github.workspace directly
+        # AZURE_FUNCTIONAPP_ROOT_FOLDER_JOB: 'api' # If you wanted to override or specify differently at job level
+        FUNCTION_APP_MODEL_DIR_ABSOLUTE: ${{ github.workspace }}/api/model # Construct full path directly
+                                                                      # Using the known value 'api' from workflow env
 
     steps:
       - name: Checkout repository
@@ -31,15 +33,16 @@ jobs:
       - name: Setup Python version
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }} # Workflow env is fine here
 
       - name: Install MLflow and Function App dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install mlflow # For fetching the model
-          pip install -r ${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }}/requirements.txt
+          pip install mlflow 
+          pip install -r ${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }}/requirements.txt # Workflow env is fine here
       
       - name: Create target model directory in Function App folder
+        # Use the job-level 'FUNCTION_APP_MODEL_DIR_ABSOLUTE' which was constructed correctly
         run: mkdir -p ${{ env.FUNCTION_APP_MODEL_DIR_ABSOLUTE }}
 
       - name: Download latest registered model and tokenizer from MLflow
@@ -55,7 +58,7 @@ jobs:
           import os
 
           model_name = os.environ.get('MLFLOW_REGISTERED_MODEL_NAME_SCRIPT')
-          target_model_dir = os.environ.get('FUNCTION_APP_MODEL_DIR_ABSOLUTE_SCRIPT')
+          target_model_dir = os.environ.get('FUNCTION_APP_MODEL_DIR_ABSOLUTE_SCRIPT') # This will receive the job-level env
           mlflow_tracking_uri = os.environ.get('MLFLOW_TRACKING_URI_FOR_SCRIPT')
 
           if not all([model_name, target_model_dir, mlflow_tracking_uri]):
@@ -83,30 +86,25 @@ jobs:
               run_id = latest_model.run_id
               print(f'Latest version for {model_name}: Version {latest_model.version}, Run ID: {run_id}, Source: {latest_model.source}')
 
-              # Define expected final paths
               final_model_path = os.path.join(target_model_dir, 'model.keras')
               final_tokenizer_path = os.path.join(target_model_dir, 'keras_tokenizer.pkl')
 
-              # Download Keras model
               print(f'Attempting to download model artifact: model/data/model.keras from run {run_id} to {target_model_dir}')
               mlflow.artifacts.download_artifacts(
                   run_id=run_id,
                   artifact_path='model/data/model.keras', 
-                  dst_path=target_model_dir  # Download into this directory
+                  dst_path=target_model_dir  
               )
-              # mlflow.artifacts.download_artifacts often creates the artifact_path structure within dst_path
-              # So, 'model/data/model.keras' from artifacts will be at 'target_model_dir/model/data/model.keras'
               downloaded_model_subpath = os.path.join(target_model_dir, 'model', 'data', 'model.keras')
               if os.path.exists(downloaded_model_subpath):
                   shutil.move(downloaded_model_subpath, final_model_path)
                   print(f'Moved Keras model from {downloaded_model_subpath} to {final_model_path}')
-                  # Clean up potentially empty parent directories
                   if os.path.isdir(os.path.join(target_model_dir, 'model', 'data')):
                       try: os.rmdir(os.path.join(target_model_dir, 'model', 'data'))
-                      except OSError: pass # Ignore if not empty
+                      except OSError: pass 
                   if os.path.isdir(os.path.join(target_model_dir, 'model')):
                       try: os.rmdir(os.path.join(target_model_dir, 'model'))
-                      except OSError: pass # Ignore if not empty
+                      except OSError: pass 
               elif os.path.exists(final_model_path):
                   print(f'Keras model already at {final_model_path}')
               else:
@@ -114,21 +112,19 @@ jobs:
                   os.system(f'ls -lR {target_model_dir}')
                   exit(1)
 
-              # Download tokenizer
               print(f'Attempting to download tokenizer artifact: tokenizer/keras_tokenizer.pkl from run {run_id} to {target_model_dir}')
               mlflow.artifacts.download_artifacts(
                   run_id=run_id,
                   artifact_path='tokenizer/keras_tokenizer.pkl', 
-                  dst_path=target_model_dir # Download into this directory
+                  dst_path=target_model_dir 
               )
-              # Similar logic for tokenizer path
               downloaded_tokenizer_subpath = os.path.join(target_model_dir, 'tokenizer', 'keras_tokenizer.pkl')
               if os.path.exists(downloaded_tokenizer_subpath):
                   shutil.move(downloaded_tokenizer_subpath, final_tokenizer_path)
                   print(f'Moved tokenizer from {downloaded_tokenizer_subpath} to {final_tokenizer_path}')
                   if os.path.isdir(os.path.join(target_model_dir, 'tokenizer')):
                       try: os.rmdir(os.path.join(target_model_dir, 'tokenizer'))
-                      except OSError: pass # Ignore if not empty
+                      except OSError: pass 
               elif os.path.exists(final_tokenizer_path):
                   print(f'Tokenizer already at {final_tokenizer_path}')
               else:
@@ -146,27 +142,27 @@ jobs:
               traceback.print_exc()
               exit(1)
           "
-        env: 
-          MLFLOW_REGISTERED_MODEL_NAME_SCRIPT: ${{ env.MLFLOW_REGISTERED_MODEL_NAME }}
-          FUNCTION_APP_MODEL_DIR_ABSOLUTE_SCRIPT: ${{ env.FUNCTION_APP_MODEL_DIR_ABSOLUTE }}
+        env: # Env for this specific run step (python script)
+          MLFLOW_REGISTERED_MODEL_NAME_SCRIPT: ${{ env.MLFLOW_REGISTERED_MODEL_NAME }} # Uses workflow env
+          FUNCTION_APP_MODEL_DIR_ABSOLUTE_SCRIPT: ${{ env.FUNCTION_APP_MODEL_DIR_ABSOLUTE }} # Uses job env (which was correctly constructed)
           # MLFLOW_TRACKING_URI_FOR_SCRIPT is exported in the shell script part of this run step
 
       - name: Zip artifact for deployment (Function App folder contents)
         run: |
           echo "Current directory before zipping: $(pwd)"
           echo "Zipping contents of ${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }} into ../${{ env.ARTIFACT_ZIP_NAME }}"
-          cd ${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }}
-          zip -r ../${{ env.ARTIFACT_ZIP_NAME }} . -x "*venv/*" -x "*.git/*" -x "*__pycache__/*"
+          cd ${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }} # Uses workflow env
+          zip -r ../${{ env.ARTIFACT_ZIP_NAME }} . -x "*venv/*" -x "*.git/*" -x "*__pycache__/*" # Uses workflow env
           cd .. 
-          echo "Zip file created at: $(pwd)/${{ env.ARTIFACT_ZIP_NAME }}"
-          ls -l ${{ env.ARTIFACT_ZIP_NAME }}
+          echo "Zip file created at: $(pwd)/${{ env.ARTIFACT_ZIP_NAME }}" # Uses workflow env
+          ls -l ${{ env.ARTIFACT_ZIP_NAME }} # Uses workflow env
 
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: python-app-artifact
-          path: ${{ env.ARTIFACT_ZIP_NAME }} 
+          path: ${{ env.ARTIFACT_ZIP_NAME }} # Uses workflow env
 
   deploy:
     runs-on: ubuntu-latest
@@ -190,5 +186,5 @@ jobs:
         with:
           app-name: 'Projet-Analyse-Sentiment'
           slot-name: 'Production'
-          package: ${{ env.ARTIFACT_ZIP_NAME }} 
+          package: ${{ env.ARTIFACT_ZIP_NAME }} # Uses workflow env
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_18963F46B19E49D5A57355029EB94F04 }}
