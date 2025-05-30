@@ -44,6 +44,7 @@ jobs:
       - name: Run tests
         working-directory: ./${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
         run: |
+          source ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/venv/bin/activate
           pip install pytest # or other test runners
           pytest
 
