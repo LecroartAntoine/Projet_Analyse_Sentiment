@@ -31,12 +31,14 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Create and start virtual environment
+        working-directory: ./${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
         run: |
           python -m venv venv
           source venv/bin/activate
 
       - name: Install dependencies
-        run: pip install -r ./${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/requirements.txt
+        working-directory: ./${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+        run: pip install -r ./requirements.txt
 
       # Optional: Add step to run tests here
       - name: Run tests
@@ -46,7 +48,8 @@ jobs:
           pytest
 
       - name: Zip artifact for deployment
-        run: zip release.zip ./${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/* -r
+        working-directory: ./${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+        run: zip release.zip ./* -r
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
