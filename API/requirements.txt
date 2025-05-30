@@ -1,6 +1,5 @@
 azure-functions
 fastapi[all]
-"fastapi[all]"
 tensorflow-cpu
 pydantic
 opencensus
