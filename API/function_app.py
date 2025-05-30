@@ -82,7 +82,7 @@ class FeedbackInput(BaseModel):
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
 @app.route(route="predict", methods=[func.HttpMethod.POST])
-def predict_sentiment(req: func.HttpRequest) -> func.HttpResponse:
+def predict_sentiment(payload: func.HttpRequest) -> func.HttpResponse:
     logger.info("Python HTTP trigger function processed a /predict request.")
 
     if model is None or tokenizer is None:
@@ -94,7 +94,7 @@ def predict_sentiment(req: func.HttpRequest) -> func.HttpResponse:
         )
 
     try:
-        req_body = req.get_json()
+        req_body = payload.get_json()
     except ValueError:
         logger.error("Invalid JSON format in request body.")
         return func.HttpResponse(
@@ -153,7 +153,7 @@ def predict_sentiment(req: func.HttpRequest) -> func.HttpResponse:
         )
 
 @app.route(route="/", methods=[func.HttpMethod.GET]) # Or route="" for the root
-def root_endpoint(req: func.HttpRequest) -> func.HttpResponse:
+def root_endpoint(payload: func.HttpRequest) -> func.HttpResponse:
     logger.info("Python HTTP trigger function processed a / request.")
     return func.HttpResponse(
         json.dumps({"message": "API de prédiction de sentiment pour Air Paradis"}),
@@ -161,11 +161,11 @@ def root_endpoint(req: func.HttpRequest) -> func.HttpResponse:
     )
 
 @app.route(route="feedback", methods=[func.HttpMethod.POST])
-def log_feedback(req: func.HttpRequest) -> func.HttpResponse:
+def log_feedback(payload: func.HttpRequest) -> func.HttpResponse:
     logger.info("Python HTTP trigger function processed a /feedback request .")
 
     try:
-        req_body = req.get_json()
+        req_body = payload.get_json()
     except ValueError:
         logger.error("Invalid JSON format in feedback request body.")
         return func.HttpResponse(

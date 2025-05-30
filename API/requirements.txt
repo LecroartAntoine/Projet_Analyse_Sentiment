@@ -4,4 +4,4 @@ tensorflow-cpu
 pydantic
 opencensus
 opencensus-ext-azure
-pytest
+unittest

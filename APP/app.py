@@ -1,8 +1,8 @@
 import streamlit as st
 import requests # Pour appeler votre API déployée
 
-API_URL = "https://airparadisapi.azurewebsites.net/predict"  # 
-FEEDBACK_URL = "https://airparadisapi.azurewebsites.net/feedback"
+API_URL = "https://airparadisapi.azurewebsites.net/api/predict"  # 
+FEEDBACK_URL = "https://airparadisapi.azurewebsites.net/api/feedback"
 
 st.title("Testeur de Sentiment Air Paradis")
 
@@ -14,7 +14,8 @@ if st.button("Prédire le sentiment"):
             response = requests.post(API_URL, json={"text": tweet_text})
             response.raise_for_status() 
             prediction_data = response.json()
-            sentiment = prediction_data.get("sentiment")
+            sentiment = prediction_data.get("sentiment") 
+            
             probability = prediction_data.get("probability")
 
             st.write(f"Sentiment Prédit : **{sentiment}**")

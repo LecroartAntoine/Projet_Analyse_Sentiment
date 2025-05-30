@@ -43,7 +43,7 @@ jobs:
       - name: Run tests
         run: |
           source ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/venv/bin/activate
-          pytest
+          python ./${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/test_api.py
 
 
       - name: Zip artifact for deployment
