@@ -49,7 +49,7 @@ jobs:
         run: |
           # ... (setup of env vars for Python script as before) ...
           
-          python -c "
+          python -c """
           import mlflow
           import shutil
           import os
@@ -64,7 +64,7 @@ jobs:
           client = mlflow.tracking.MlflowClient()
           
           try:
-              print(f'Fetching latest versions for model: {model_name} using client with URI: {client._tracking_client.tracking_uri if hasattr(client, '_tracking_client') else 'N/A'}')
+              print(f"Fetching latest versions for model: {model_name} using client with URI: {client._tracking_client.tracking_uri if hasattr(client, '_tracking_client') else 'N/A'}")
               latest_version_info = client.get_latest_versions(model_name, stages=['None'])
               # ... (handle if no versions found) ...
 
@@ -187,7 +187,7 @@ jobs:
               import traceback
               traceback.print_exc()
               exit(1)
-          "
+          """
         env: 
           MLFLOW_REGISTERED_MODEL_NAME_SCRIPT: ${{ env.MLFLOW_REGISTERED_MODEL_NAME }}
           FUNCTION_APP_MODEL_DIR_ABSOLUTE_SCRIPT: ${{ env.FUNCTION_APP_MODEL_DIR_ABSOLUTE }}
