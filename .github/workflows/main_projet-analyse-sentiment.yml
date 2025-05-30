@@ -14,6 +14,7 @@ env:
   MODEL_EXPERIMENT_ID: '604306899295521234'
   MODEL_RUN_ID: 'b72ca14fe64c4a549306aebe1ba4641c' 
   ARTIFACT_ZIP_NAME: 'python-app.zip'
+  APPLICATIONINSIGHTS_CONNECTION_STRING: "InstrumentationKey=ea4ee31a-3f2a-4700-a97a-9bf7927331e1;IngestionEndpoint=https://francecentral-1.in.applicationinsights.azure.com/;LiveEndpoint=https://francecentral.livediagnostics.monitor.azure.com/;ApplicationId=b9d6be7f-78af-4da6-9bbe-6281ab85d1aa"
 
 jobs:
   build:
