@@ -4,7 +4,7 @@ import azure.functions as func
 import os
 
 try:
-    from function_app import predict_sentiment, root_endpoint, log_feedback # For potential checks or setup
+    from function_app import predict_sentiment, root_endpoint, log_feedback, model, tokenizer, logger # For potential checks or setup
 except ImportError as e:
     print(f"ImportError: {e}. Ensure your function_app.py and shared_code are accessible.")
     print(f"Current working directory: {os.getcwd()}")

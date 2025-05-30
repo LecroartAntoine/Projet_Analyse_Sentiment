@@ -14,7 +14,7 @@ env:
   AZURE_FUNCTIONAPP_PACKAGE_PATH: './API' # set this to the path to your web app project, defaults to the repository root
   PYTHON_VERSION: '3.10' # set this to the python version to use (supports 3.6, 3.7, 3.8)
   APPLICATIONINSIGHTS_CONNECTION_STRING: "InstrumentationKey=e7a9be23-c14c-4141-9974-fac6d3fe92f2;IngestionEndpoint=https://francecentral-1.in.applicationinsights.azure.com/;LiveEndpoint=https://francecentral.livediagnostics.monitor.azure.com/;ApplicationId=1d394ff0-fc18-4332-8974-5c453fa18e2a"
-
+  TF_ENABLE_ONEDNN_OPTS: "0"
 jobs:
   build:
     runs-on: ubuntu-latest

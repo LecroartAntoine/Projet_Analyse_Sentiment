@@ -3,12 +3,7 @@ import json
 import traceback
 from tensorflow.keras.preprocessing.sequence import pad_sequences # Specific import
 from pydantic import ValidationError
-
-      
-# shared_code/app_setup.py
 import os
-os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0' # Set before importing TensorFlow
-
 import logging
 import traceback
 import pickle
