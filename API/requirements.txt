@@ -1,5 +1,6 @@
 azure-functions
-fastapi[all]
+fastapi
+uvicorn[standard]
 tensorflow-cpu
 pydantic
 opencensus
