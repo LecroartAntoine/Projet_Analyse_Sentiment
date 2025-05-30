@@ -75,8 +75,8 @@ jobs:
         id: deploy-to-function
         with:
           app-name: 'Projet-Analyse-Sentiment'
-          slot-name: 'Production'
           package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_F8BFE4A9DA5C48E59CB1E5874563DF1B }}
           sku: 'flexconsumption'
+          remote-build: "true"
         

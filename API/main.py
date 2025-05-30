@@ -2,17 +2,12 @@ import os
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 from fastapi import FastAPI
 from pydantic import BaseModel
-import tensorflow as tf 
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 import pickle 
 import traceback
-import azure.functions as func
 from opencensus.ext.azure.log_exporter import AzureLogHandler
 import logging
-from opencensus.ext.azure.trace_exporter import AzureExporter
-from opencensus.trace.samplers import ProbabilitySampler
-from opencensus.trace.tracer import Tracer
 
 CONNECTION_STRING = os.environ.get("APPLICATIONINSIGHTS_CONNECTION_STRING")
 
@@ -74,10 +69,6 @@ async def log_feedback(feedback: FeedbackInput):
     if feedback.actual_sentiment_is_different:
         log_message = f"Misprediction reported by user. Tweet: '{feedback.tweet_text}', Predicted: '{feedback.predicted_sentiment}'"
         logger.warning(log_message) 
-        
-        tracer = Tracer(exporter=AzureExporter(connection_string=CONNECTION_STRING), sampler=ProbabilitySampler(1.0))
-        with tracer.span(name='MispredictionFeedback') as span:
-          span.add_attribute("tweet_text", feedback.tweet_text)
-          span.add_attribute("predicted_sentiment", feedback.predicted_sentiment)
+
         return {"message": "Feedback received, misprediction logged."}
     return {"message": "Feedback received."}
