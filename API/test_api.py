@@ -11,11 +11,6 @@ except ImportError as e:
     pytest.exit(f"Failed to import function app modules: {e}", 1)
 
 
-# Fixture to ensure model is loaded (though it loads on import of function_app)
-# This is more of a check or a place for future test-specific setup
-@pytest.fixture(scope="session", autouse=True)
-
-
 def create_mock_http_request(
     method: str,
     url: str,
