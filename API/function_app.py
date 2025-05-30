@@ -1,13 +1,11 @@
 import azure.functions as func
 import json
 import traceback
-from tensorflow.keras.preprocessing.sequence import pad_sequences # Specific import
 from pydantic import ValidationError
 import os
 import logging
 import traceback
 import pickle
-import tensorflow as tf
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from pydantic import BaseModel
@@ -34,13 +32,12 @@ if not any(isinstance(handler, AzureLogHandler) for handler in logger.handlers):
         logger.addHandler(logging.StreamHandler()) # Fallback if no connection string
         logger.warning("APPLICATIONINSIGHTS_CONNECTION_STRING not set. Logging to console.")
 
-MODEL_FILE_PATH = "model.keras"
-TOKENIZER_FILE_PATH = "tokenizer.pkl"
+MODEL_FILE_PATH = "./model.keras"
+TOKENIZER_FILE_PATH = "./tokenizer.pkl"
 MAX_SEQUENCE_LENGTH = 100
 
 model = None
 tokenizer = None
-
 
 model_exists = os.path.exists(MODEL_FILE_PATH)
 tokenizer_exists = os.path.exists(TOKENIZER_FILE_PATH)
