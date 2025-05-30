@@ -35,16 +35,10 @@ jobs:
           python -m venv ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/venv
           source ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/venv/bin/activate
 
-      - name: Install dependencies
+      - name: Install dependencies & Run tests
         run: |                     
           source ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/venv/bin/activate     
           pip install -r ./${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/requirements.txt
-
-      # Optional: Add step to run tests here
-      - name: Run tests
-        run: |
-          source ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/venv/bin/activate
-          cd ./${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
           pytest
 
       - name: Zip artifact for deployment
