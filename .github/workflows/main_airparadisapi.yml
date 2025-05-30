@@ -43,7 +43,7 @@ jobs:
       - name: Run tests
         working-directory: ./${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
         run: |
-          pip install pytest
+          pip install pytest # or other test runners
           pytest
 
 
@@ -79,3 +79,4 @@ jobs:
           slot-name: 'Production'
           package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_E16982C6DF2E42B180F2AEDA5AE2C38B }}
+          remote-build: "true"
