@@ -6,216 +6,82 @@ on:
       - main
   workflow_dispatch:
 
-env: # Workflow-level environment variables, accessible in all jobs
+env:
   PYTHON_VERSION: '3.10'
-  AZURE_FUNCTIONAPP_ROOT_FOLDER: 'API' # Base path for function app code
-  MLFLOW_REGISTERED_MODEL_NAME: 'MODEL_ADVANCED'
-  MLFLOW_TRACKING_URI_RELATIVE: 'Modélisation/mlruns' 
+
+  AZURE_FUNCTIONAPP_ROOT_FOLDER: 'api'
+  MLFLOW_RUNS_DIR: 'Modélisation/mlruns'
+  MODEL_EXPERIMENT_ID: '604306899295521234'
+  MODEL_RUN_ID: 'b72ca14fe64c4a549306aebe1ba4641c' 
   ARTIFACT_ZIP_NAME: 'python-app.zip'
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions: 
-      contents: read
-    env: # Job-level environment variables for the 'build' job
-        # We reconstruct the path or use github.workspace directly
-        # AZURE_FUNCTIONAPP_ROOT_FOLDER_JOB: 'api' # If you wanted to override or specify differently at job level
-        FUNCTION_APP_MODEL_DIR_ABSOLUTE: ${{ github.workspace }}/API/model # Construct full path directly
-                                                                      # Using the known value 'api' from workflow env
+    permissions:
+      contents: read #This is required for actions/checkout
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 
 
       - name: Setup Python version
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }} # Workflow env is fine here
+          python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install MLflow and Function App dependencies
+      - name: Create and start virtual environment (optional for GH Actions, but good for local consistency)
         run: |
-          python -m pip install --upgrade pip
-          pip install mlflow 
-          pip install -r ${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }}/requirements.txt # Workflow env is fine here
+          python -m venv venv
+          source venv/bin/activate
       
-      - name: Create target model directory in Function App folder
-        # Use the job-level 'FUNCTION_APP_MODEL_DIR_ABSOLUTE' which was constructed correctly
-        run: mkdir -p ${{ env.FUNCTION_APP_MODEL_DIR_ABSOLUTE }}
+      - name: Install dependencies for the Function App
+        # This installs requirements for your Function App, located in its root folder
+        run: pip install -r ${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }}/requirements.txt
 
-      - name: Download latest registered model and tokenizer from MLflow
+      - name: Create model directory in Function App folder
+        run: mkdir -p ${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }}/model
+        # The -p flag ensures it doesn't error if the directory already exists
+
+      - name: Copy MLflow model artifacts to Function App model directory
         run: |
-          # ... (setup of env vars for Python script as before) ...
+          echo "Locating MLflow artifacts..."
+          MLFLOW_ARTIFACT_SOURCE_PATH="${{ env.MLFLOW_RUNS_DIR }}/${{ env.MODEL_EXPERIMENT_ID }}/${{ env.MODEL_RUN_ID }}/artifacts"
           
-          python -c """
-          import mlflow
-          import shutil
-          import os
-          import re # For regex
-
-          # ... (retrieve env vars model_name, target_model_dir, mlflow_tracking_uri_for_script) ...
-          # ... (check if env vars are set) ...
-
-          mlflow.set_tracking_uri(mlflow_tracking_uri_for_script)
-          print(f'Python script: MLflow tracking URI effectively set to: {mlflow.get_tracking_uri()}')
+          echo "Copying Keras model from: ${MLFLOW_ARTIFACT_SOURCE_PATH}/model/data/model.keras"
+          cp "${MLFLOW_ARTIFACT_SOURCE_PATH}/model/data/model.keras" "${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }}/model/model.keras"
           
-          client = mlflow.tracking.MlflowClient()
+          echo "Copying Keras tokenizer from: ${MLFLOW_ARTIFACT_SOURCE_PATH}/tokenizer/keras_tokenizer.pkl"
+          cp "${MLFLOW_ARTIFACT_SOURCE_PATH}/tokenizer/keras_tokenizer.pkl" "${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }}/model/keras_tokenizer.pkl"
           
-          try:
-              print(f"Fetching latest versions for model: {model_name} using client with URI: {client._tracking_client.tracking_uri if hasattr(client, '_tracking_client') else 'N/A'}")
-              latest_version_info = client.get_latest_versions(model_name, stages=['None'])
-              # ... (handle if no versions found) ...
+          echo "Contents of target model directory:"
+          ls -lR ${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }}/model
 
-              latest_model_version_obj = latest_version_info[0]
-              run_id_from_registry = latest_model_version_obj.run_id 
-              source_uri_from_registry = latest_model_version_obj.source
-
-              print(f'Latest version for {model_name}: Version {latest_model_version_obj.version}, Run ID from registry: {run_id_from_registry}')
-              print(f'DEBUG: Source URI from registry: {source_uri_from_registry}')
-
-              # --- Attempt to directly copy files if download_artifacts fails due to source URI ---
-              # This assumes MLFLOW_TRACKING_URI_RELATIVE points to 'Modélisation/mlruns'
-              # And github.workspace is the root of the repo on the runner.
-
-              # Try to parse experiment_id and run_id from the source_uri_from_registry
-              # Regex to find .../mlruns/<experiment_id>/<run_id>/...
-              # This regex assumes 'mlruns' is in the path, followed by exp_id, then run_id
-              match = re.search(r'mlruns/([^/]+)/([^/]+)/artifacts', source_uri_from_registry)
-              experiment_id_from_source = None
-              run_id_from_source = None
-
-              if match:
-                  experiment_id_from_source = match.group(1)
-                  run_id_from_source = match.group(2)
-                  print(f'Parsed from source URI: Experiment ID = {experiment_id_from_source}, Run ID = {run_id_from_source}')
-                  if run_id_from_source != run_id_from_registry:
-                      print(f'WARNING: Run ID from registry ({run_id_from_registry}) differs from parsed Run ID ({run_id_from_source}). Using registry one.')
-              else:
-                  print(f'Could not parse experiment ID and Run ID from source URI: {source_uri_from_registry}')
-                  # Fallback or error - for now, let's try to proceed assuming run_id_from_registry is primary
-                  # If we can't get experiment_id, constructing the full path is hard without listing experiments.
-                  # However, the structure of mlruns usually uses experiment_id as a directory name.
-                  # Let's assume the experiment_id is needed for the path.
-                  # This part becomes tricky if we can't reliably get the experiment_id.
-
-              # Construct the base path to the checked-out mlruns on the runner
-              # GITHUB_WORKSPACE_FOR_PYTHON is passed from shell
-              github_workspace = os.environ.get('GITHUB_WORKSPACE_FOR_PYTHON')
-              mlflow_tracking_uri_relative_for_python = os.environ.get('MLFLOW_TRACKING_URI_RELATIVE_FOR_PYTHON')
-              
-              if not github_workspace or not mlflow_tracking_uri_relative_for_python:
-                  print('Error: GITHUB_WORKSPACE_FOR_PYTHON or MLFLOW_TRACKING_URI_RELATIVE_FOR_PYTHON not set for Python script.')
-                  exit(1)
-
-              # Path to the root of the mlruns directory on the runner
-              base_mlruns_path_on_runner = os.path.join(github_workspace, mlflow_tracking_uri_relative_for_python)
-              print(f'Base mlruns path on runner: {base_mlruns_path_on_runner}')
-
-              # If we couldn't parse experiment_id, this approach is stuck.
-              # For now, let's assume we MUST have experiment_id_from_source if we go this manual route.
-              # A more robust way would be client.get_run(run_id_from_registry).info.experiment_id
-              try:
-                  run_info = client.get_run(run_id_from_registry)
-                  experiment_id_from_run_info = run_info.info.experiment_id
-                  print(f'Got Experiment ID from run_info: {experiment_id_from_run_info}')
-              except Exception as e_get_run:
-                  print(f'Could not get run_info for {run_id_from_registry}: {e_get_run}')
-                  print('Proceeding with parsed experiment_id if available, otherwise this manual copy will likely fail.')
-                  experiment_id_from_run_info = experiment_id_from_source # Fallback to parsed
-
-              if not experiment_id_from_run_info:
-                  print('CRITICAL: Cannot determine experiment ID. Manual file copy will fail.')
-                  # Attempt MLflow download one last time before failing completely
-                  try:
-                      print(f'Attempting mlflow.artifacts.download_artifacts one last time for model...')
-                      mlflow.artifacts.download_artifacts(run_id=run_id_from_registry, artifact_path='model/data/model.keras', dst_path=target_model_dir)
-                      # ... (move logic) ...
-                      print(f'Attempting mlflow.artifacts.download_artifacts one last time for tokenizer...')
-                      mlflow.artifacts.download_artifacts(run_id=run_id_from_registry, artifact_path='tokenizer/keras_tokenizer.pkl', dst_path=target_model_dir)
-                      # ... (move logic) ...
-                      print('MLflow download succeeded on last attempt.')
-                  except Exception as e_mlflow_dl:
-                      print(f'Final attempt with mlflow.artifacts.download_artifacts also failed: {e_mlflow_dl}')
-                      print('Exiting due to inability to fetch artifacts.')
-                      exit(1)
-              else:
-                  # --- Manual File Copy Logic ---
-                  runner_model_artifact_src_path = os.path.join(
-                      base_mlruns_path_on_runner,
-                      experiment_id_from_run_info, # Use experiment ID from run_info
-                      run_id_from_registry,        # Use run ID from registry
-                      'artifacts',
-                      'model', 'data', 'model.keras' # Relative path within artifacts
-                  )
-                  runner_tokenizer_artifact_src_path = os.path.join(
-                      base_mlruns_path_on_runner,
-                      experiment_id_from_run_info,
-                      run_id_from_registry,
-                      'artifacts',
-                      'tokenizer', 'keras_tokenizer.pkl'
-                  )
-
-                  final_model_path_in_target = os.path.join(target_model_dir, 'model.keras')
-                  final_tokenizer_path_in_target = os.path.join(target_model_dir, 'keras_tokenizer.pkl')
-
-                  print(f'Manually copying model from (runner path): {runner_model_artifact_src_path} to {final_model_path_in_target}')
-                  if os.path.exists(runner_model_artifact_src_path):
-                      shutil.copy(runner_model_artifact_src_path, final_model_path_in_target)
-                  else:
-                      print(f'ERROR: Source model file not found on runner: {runner_model_artifact_src_path}')
-                      exit(1)
-                  
-                  print(f'Manually copying tokenizer from (runner path): {runner_tokenizer_artifact_src_path} to {final_tokenizer_path_in_target}')
-                  if os.path.exists(runner_tokenizer_artifact_src_path):
-                      shutil.copy(runner_tokenizer_artifact_src_path, final_tokenizer_path_in_target)
-                  else:
-                      print(f'ERROR: Source tokenizer file not found on runner: {runner_tokenizer_artifact_src_path}')
-                      exit(1)
-                  
-                  print('Manual file copy completed.')
-              # --- End Manual File Copy Logic ---
-
-
-              print(f'Model and tokenizer should be in {target_model_dir}')
-              print('Final contents of target model directory:')
-              os.system(f'ls -lR {target_model_dir}')
-
-          except Exception as e:
-              print(f'ERROR in Python script: {e}')
-              import traceback
-              traceback.print_exc()
-              exit(1)
-          """
-        env: 
-          MLFLOW_REGISTERED_MODEL_NAME_SCRIPT: ${{ env.MLFLOW_REGISTERED_MODEL_NAME }}
-          FUNCTION_APP_MODEL_DIR_ABSOLUTE_SCRIPT: ${{ env.FUNCTION_APP_MODEL_DIR_ABSOLUTE }}
-          MLFLOW_TRACKING_URI_FOR_PYTHON_SCRIPT: "file://${{ github.workspace }}/${{ env.MLFLOW_TRACKING_URI_RELATIVE }}"
-          GITHUB_WORKSPACE_FOR_PYTHON: ${{ github.workspace }} # Pass workspace to Python
-          MLFLOW_TRACKING_URI_RELATIVE_FOR_PYTHON: ${{ env.MLFLOW_TRACKING_URI_RELATIVE }} # Pass relative path
+      - name: Run tests
+        working-directory: ./${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }}
+        run: |
+          pip install pytest # or other test runners
+          pytest
 
       - name: Zip artifact for deployment (Function App folder contents)
+        # This step zips the contents of your AZURE_FUNCTIONAPP_ROOT_FOLDER (e.g., 'api')
+        # The resulting zip will have function_app.py, model/, requirements.txt etc. at its root.
         run: |
-          echo "Current directory before zipping: $(pwd)"
-          echo "Zipping contents of ${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }} into ../${{ env.ARTIFACT_ZIP_NAME }}"
-          cd ${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }} # Uses workflow env
-          zip -r ../${{ env.ARTIFACT_ZIP_NAME }} . -x "*venv/*" -x "*.git/*" -x "*__pycache__/*" # Uses workflow env
-          cd .. 
-          echo "Zip file created at: $(pwd)/${{ env.ARTIFACT_ZIP_NAME }}" # Uses workflow env
-          ls -l ${{ env.ARTIFACT_ZIP_NAME }} # Uses workflow env
-
+          cd ${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }}
+          zip -r ../${{ env.ARTIFACT_ZIP_NAME }} . -x "*venv/*" -x "*.git/*" -x "*__pycache__/*"
+          # The '..' means the zip file is created in the repository root.
+        # Ensure your function_app.py and host.json are directly inside the AZURE_FUNCTIONAPP_ROOT_FOLDER
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
-          name: python-app-artifact
-          path: ${{ env.ARTIFACT_ZIP_NAME }} # Uses workflow env
+          name: python-app-artifact # Name of the artifact in GitHub Actions
+          path: ${{ env.ARTIFACT_ZIP_NAME }} # Path to the zip file created in the previous step
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
-    environment:
+    environment: # Optional: If you have a GitHub Environment configured for 'Production'
       name: 'Production'
       url: ${{ steps.deploy-to-function.outputs.webapp-url }}
     
@@ -223,16 +89,26 @@ jobs:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
-          name: python-app-artifact
+          name: python-app-artifact # Must match the upload name
+          # This will download and extract the zip to the current directory by default.
+          # If it downloads the zip itself, the next step is fine.
+          # If it extracts, then 'package' in deploy needs to point to the folder.
+          # Let's assume it downloads the zip file.
 
-      - name: List files after download
-        run: ls -lR
+      # No explicit unzip step needed if Azure/functions-action can take a zip.
+      # If Azure/functions-action@v1 expects a folder path after manual unzipping,
+      # you would add an unzip step here and change 'package' below.
+      # However, it usually handles zip files directly.
 
       - name: 'Deploy to Azure Functions'
         uses: Azure/functions-action@v1
         id: deploy-to-function
         with:
-          app-name: 'Projet-Analyse-Sentiment'
-          slot-name: 'Production'
-          package: ${{ env.ARTIFACT_ZIP_NAME }} # Uses workflow env
+          app-name: 'Projet-Analyse-Sentiment' # Your Function App Name
+          slot-name: 'Production' # Or your desired slot
+          package: ${{ env.ARTIFACT_ZIP_NAME }} # Path to the zip file downloaded from artifacts
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_18963F46B19E49D5A57355029EB94F04 }}
+          # The 'sku' parameter is generally not set in the deployment action itself, 
+          # as SKU is part of the App Service Plan / Function App hosting plan configuration in Azure.
+          # You can remove it if it causes issues or is not needed.
+          # sku: 'flexconsumption' 
