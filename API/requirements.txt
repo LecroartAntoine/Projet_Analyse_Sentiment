@@ -1,4 +1,5 @@
 azure-functions
+fastapi
 fastapi[standard]
 tensorflow-cpu
 pydantic
