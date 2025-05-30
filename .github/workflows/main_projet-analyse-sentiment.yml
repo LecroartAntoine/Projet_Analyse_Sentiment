@@ -6,30 +6,26 @@ on:
       - main
   workflow_dispatch:
 
-env:
+env: # Workflow-level environment variables, accessible in all jobs
   PYTHON_VERSION: '3.10'
   AZURE_FUNCTIONAPP_ROOT_FOLDER: 'api'
-  # Name of the model registered in MLflow
   MLFLOW_REGISTERED_MODEL_NAME: 'MODEL_ADVANCED'
-  # Path where MLflow data is stored in your repository
-  MLFLOW_TRACKING_URI_RELATIVE: 'Modélisation/mlruns' # Relative to repo root
+  MLFLOW_TRACKING_URI_RELATIVE: 'Modélisation/mlruns' 
   ARTIFACT_ZIP_NAME: 'python-app.zip'
-  # Target directory for model files within the Function App
-  FUNCTION_APP_MODEL_DIR: '${{ github.workspace }}/${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }}/model'
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
+    permissions: # Permissions for the GITHUB_TOKEN for this job
       contents: read
+    env: # Job-level environment variables for the 'build' job
+        FUNCTION_APP_MODEL_DIR_RELATIVE: ${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }}/model 
+        FUNCTION_APP_MODEL_DIR_ABSOLUTE: ${{ github.workspace }}/${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }}/model
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          # Fetch all history for all branches and tags.
-          # This might be needed if MLflow relies on git history for some operations,
-          # or if your mlruns directory is large and you use LFS.
           fetch-depth: 0 
 
       - name: Setup Python version
@@ -44,111 +40,133 @@ jobs:
           pip install -r ${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }}/requirements.txt
       
       - name: Create target model directory in Function App folder
-        run: mkdir -p ${{ env.FUNCTION_APP_MODEL_DIR }}
+        run: mkdir -p ${{ env.FUNCTION_APP_MODEL_DIR_ABSOLUTE }}
 
       - name: Download latest registered model and tokenizer from MLflow
-        # This step assumes your mlruns directory is part of the checked-out repository
-        # and MLflow can use it as a local file-based tracking URI.
         run: |
           echo "Setting MLFLOW_TRACKING_URI to local path: file://${{ github.workspace }}/${{ env.MLFLOW_TRACKING_URI_RELATIVE }}"
-          export MLFLOW_TRACKING_URI="file://${{ github.workspace }}/${{ env.MLFLOW_TRACKING_URI_RELATIVE }}"
+          export MLFLOW_TRACKING_URI_FOR_SCRIPT="file://${{ github.workspace }}/${{ env.MLFLOW_TRACKING_URI_RELATIVE }}"
           
           echo "Fetching latest version for model: ${{ env.MLFLOW_REGISTERED_MODEL_NAME }}"
           
-          # Using Python to get model details and download
           python -c "
           import mlflow
           import shutil
           import os
 
-          model_name = '${{ env.MLFLOW_REGISTERED_MODEL_NAME }}'
-          target_model_dir = '${{ env.FUNCTION_APP_MODEL_DIR }}'
+          model_name = os.environ.get('MLFLOW_REGISTERED_MODEL_NAME_SCRIPT')
+          target_model_dir = os.environ.get('FUNCTION_APP_MODEL_DIR_ABSOLUTE_SCRIPT')
+          mlflow_tracking_uri = os.environ.get('MLFLOW_TRACKING_URI_FOR_SCRIPT')
+
+          if not all([model_name, target_model_dir, mlflow_tracking_uri]):
+              print('One or more critical environment variables for Python script not set!')
+              print(f'model_name: {model_name}')
+              print(f'target_model_dir: {target_model_dir}')
+              print(f'mlflow_tracking_uri: {mlflow_tracking_uri}')
+              exit(1)
+
+          mlflow.set_tracking_uri(mlflow_tracking_uri)
+          print(f'MLflow tracking URI set to: {mlflow.get_tracking_uri()}')
           
           client = mlflow.tracking.MlflowClient()
           
           try:
-              latest_version_info = client.get_latest_versions(model_name, stages=['None']) # Or 'Production', 'Staging' if you use stages
+              latest_version_info = client.get_latest_versions(model_name, stages=['None']) 
               if not latest_version_info:
-                  print(f'No versions found for model {model_name} with stage None.')
-                  # If you use stages like 'Production', try that:
+                  print(f'No versions found for model {model_name} with stage None. Trying Production stage...')
                   latest_version_info = client.get_latest_versions(model_name, stages=['Production'])
                   if not latest_version_info:
                       print(f'No versions found for model {model_name} with stage Production either.')
                       exit(1)
 
-              # Get the first one (should be the latest if stages=['None'] or only one in 'Production')
               latest_model = latest_version_info[0]
               run_id = latest_model.run_id
-              model_source_uri = latest_model.source # This is the artifact URI like 'runs:/<run_id>/model' or 'mlruns:/<exp_id>/<run_id>/artifacts/model'
-              print(f'Latest version for {model_name}: Version {latest_model.version}, Run ID: {run_id}, Source: {model_source_uri}')
+              print(f'Latest version for {model_name}: Version {latest_model.version}, Run ID: {run_id}, Source: {latest_model.source}')
 
-              # MLflow download_artifacts path is relative to the artifact root of the run
-              # 1. Download the Keras model
-              # The model logged by mlflow.tensorflow.log_model or mlflow.keras.log_model is usually a directory
-              # named 'model' (or whatever you named it during logging) containing model.keras or saved_model.pb etc.
-              # We assume the Keras model is 'model/data/model.keras' WITHIN the artifacts of that run
+              # Define expected final paths
+              final_model_path = os.path.join(target_model_dir, 'model.keras')
+              final_tokenizer_path = os.path.join(target_model_dir, 'keras_tokenizer.pkl')
+
+              # Download Keras model
+              print(f'Attempting to download model artifact: model/data/model.keras from run {run_id} to {target_model_dir}')
               mlflow.artifacts.download_artifacts(
                   run_id=run_id,
-                  artifact_path='model/data/model.keras', # Path *within* the run's artifacts
-                  dst_path=target_model_dir
+                  artifact_path='model/data/model.keras', 
+                  dst_path=target_model_dir  # Download into this directory
               )
-              # Rename if download_artifacts doesn't place it with the exact name
-              if os.path.exists(os.path.join(target_model_dir, 'model.keras')):
-                  print('Keras model downloaded.')
-              else: # If it was downloaded into a subdirectory (e.g. 'model.keras/model.keras')
-                  # This part needs adjustment based on how download_artifacts places the file
-                  print(f'Keras model file not found directly. Check contents of {target_model_dir}')
-                  # For example, if it downloads the full path 'model/data/model.keras':
-                  # source_keras_path = os.path.join(target_model_dir, 'model', 'data', 'model.keras')
-                  # if os.path.exists(source_keras_path):
-                  #    shutil.move(source_keras_path, os.path.join(target_model_dir, 'model.keras'))
-                  #    shutil.rmtree(os.path.join(target_model_dir, 'model')) # Clean up empty dirs
-                  # else:
-                  #    print('Could not locate model.keras after download.')
-                  #    exit(1)
-
-              # 2. Download the tokenizer
-              # We assume the tokenizer is 'tokenizer/keras_tokenizer.pkl' WITHIN the artifacts of that run
-              mlflow.artifacts.download_artifacts(
-                  run_id=run_id,
-                  artifact_path='tokenizer/keras_tokenizer.pkl', # Path *within* the run's artifacts
-                  dst_path=target_model_dir
-              )
-              if os.path.exists(os.path.join(target_model_dir, 'keras_tokenizer.pkl')):
-                 print('Tokenizer downloaded.')
+              # mlflow.artifacts.download_artifacts often creates the artifact_path structure within dst_path
+              # So, 'model/data/model.keras' from artifacts will be at 'target_model_dir/model/data/model.keras'
+              downloaded_model_subpath = os.path.join(target_model_dir, 'model', 'data', 'model.keras')
+              if os.path.exists(downloaded_model_subpath):
+                  shutil.move(downloaded_model_subpath, final_model_path)
+                  print(f'Moved Keras model from {downloaded_model_subpath} to {final_model_path}')
+                  # Clean up potentially empty parent directories
+                  if os.path.isdir(os.path.join(target_model_dir, 'model', 'data')):
+                      try: os.rmdir(os.path.join(target_model_dir, 'model', 'data'))
+                      except OSError: pass # Ignore if not empty
+                  if os.path.isdir(os.path.join(target_model_dir, 'model')):
+                      try: os.rmdir(os.path.join(target_model_dir, 'model'))
+                      except OSError: pass # Ignore if not empty
+              elif os.path.exists(final_model_path):
+                  print(f'Keras model already at {final_model_path}')
               else:
-                 print(f'Tokenizer file not found directly. Check contents of {target_model_dir}')
-                 # Add similar logic as for model.keras if needed
-                 # exit(1)
+                  print(f'Keras model file not found at {downloaded_model_subpath} or {final_model_path}. Contents of {target_model_dir}:')
+                  os.system(f'ls -lR {target_model_dir}')
+                  exit(1)
 
-              print(f'Model and tokenizer downloaded to {target_model_dir}')
-              print('Contents of target model directory:')
+              # Download tokenizer
+              print(f'Attempting to download tokenizer artifact: tokenizer/keras_tokenizer.pkl from run {run_id} to {target_model_dir}')
+              mlflow.artifacts.download_artifacts(
+                  run_id=run_id,
+                  artifact_path='tokenizer/keras_tokenizer.pkl', 
+                  dst_path=target_model_dir # Download into this directory
+              )
+              # Similar logic for tokenizer path
+              downloaded_tokenizer_subpath = os.path.join(target_model_dir, 'tokenizer', 'keras_tokenizer.pkl')
+              if os.path.exists(downloaded_tokenizer_subpath):
+                  shutil.move(downloaded_tokenizer_subpath, final_tokenizer_path)
+                  print(f'Moved tokenizer from {downloaded_tokenizer_subpath} to {final_tokenizer_path}')
+                  if os.path.isdir(os.path.join(target_model_dir, 'tokenizer')):
+                      try: os.rmdir(os.path.join(target_model_dir, 'tokenizer'))
+                      except OSError: pass # Ignore if not empty
+              elif os.path.exists(final_tokenizer_path):
+                  print(f'Tokenizer already at {final_tokenizer_path}')
+              else:
+                  print(f'Tokenizer file not found at {downloaded_tokenizer_subpath} or {final_tokenizer_path}. Contents of {target_model_dir}:')
+                  os.system(f'ls -lR {target_model_dir}')
+                  exit(1)
+
+              print(f'Model and tokenizer should be in {target_model_dir}')
+              print('Final contents of target model directory:')
               os.system(f'ls -lR {target_model_dir}')
 
           except Exception as e:
               print(f'Error fetching/downloading model: {e}')
+              import traceback
+              traceback.print_exc()
               exit(1)
           "
-        env:
-          # Pass env vars to the python script if needed, though here they are directly embedded
-          MLFLOW_REGISTERED_MODEL_NAME: ${{ env.MLFLOW_REGISTERED_MODEL_NAME }}
-          FUNCTION_APP_MODEL_DIR: ${{ env.FUNCTION_APP_MODEL_DIR }}
-          MLFLOW_TRACKING_URI: "file://${{ github.workspace }}/${{ env.MLFLOW_TRACKING_URI_RELATIVE }}"
-
-
-      # Optional: Run tests for your Function App code here (after model is downloaded)
+        env: 
+          MLFLOW_REGISTERED_MODEL_NAME_SCRIPT: ${{ env.MLFLOW_REGISTERED_MODEL_NAME }}
+          FUNCTION_APP_MODEL_DIR_ABSOLUTE_SCRIPT: ${{ env.FUNCTION_APP_MODEL_DIR_ABSOLUTE }}
+          # MLFLOW_TRACKING_URI_FOR_SCRIPT is exported in the shell script part of this run step
 
       - name: Zip artifact for deployment (Function App folder contents)
         run: |
+          echo "Current directory before zipping: $(pwd)"
+          echo "Zipping contents of ${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }} into ../${{ env.ARTIFACT_ZIP_NAME }}"
           cd ${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }}
           zip -r ../${{ env.ARTIFACT_ZIP_NAME }} . -x "*venv/*" -x "*.git/*" -x "*__pycache__/*"
-        working-directory: ${{ github.workspace }} # Ensure zip command is run from repo root if using ../
+          cd .. 
+          echo "Zip file created at: $(pwd)/${{ env.ARTIFACT_ZIP_NAME }}"
+          ls -l ${{ env.ARTIFACT_ZIP_NAME }}
+
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: python-app-artifact
-          path: ${{ env.ARTIFACT_ZIP_NAME }}
+          path: ${{ env.ARTIFACT_ZIP_NAME }} 
 
   deploy:
     runs-on: ubuntu-latest
@@ -163,11 +181,14 @@ jobs:
         with:
           name: python-app-artifact
 
+      - name: List files after download
+        run: ls -lR
+
       - name: 'Deploy to Azure Functions'
         uses: Azure/functions-action@v1
         id: deploy-to-function
         with:
           app-name: 'Projet-Analyse-Sentiment'
           slot-name: 'Production'
-          package: ${{ env.ARTIFACT_ZIP_NAME }}
+          package: ${{ env.ARTIFACT_ZIP_NAME }} 
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_18963F46B19E49D5A57355029EB94F04 }}
