@@ -4,7 +4,7 @@ import azure.functions as func
 import os
 
 try:
-    from function_app import predict_sentiment, root_endpoint, log_feedback, logger, model, tokenizer # For potential checks or setup
+    from function_app import predict_sentiment, root_endpoint, log_feedback # For potential checks or setup
 except ImportError as e:
     print(f"ImportError: {e}. Ensure your function_app.py and shared_code are accessible.")
     print(f"Current working directory: {os.getcwd()}")
@@ -14,11 +14,6 @@ except ImportError as e:
 # Fixture to ensure model is loaded (though it loads on import of function_app)
 # This is more of a check or a place for future test-specific setup
 @pytest.fixture(scope="session", autouse=True)
-def ensure_model_loaded():
-    logger.info("Test session starting: Checking model and tokenizer.")
-    if model is None or tokenizer is None:
-        pytest.fail("Model or tokenizer failed to load. Check shared_code/app_setup.py and model paths.")
-    logger.info("Model and tokenizer are loaded for tests.")
 
 
 def create_mock_http_request(

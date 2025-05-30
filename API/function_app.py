@@ -89,7 +89,7 @@ app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
 @app.route(route="predict", methods=[func.HttpMethod.POST])
 def predict_sentiment(req: func.HttpRequest) -> func.HttpResponse:
-    logger.info("Python HTTP trigger function processed a /predict request (v2 model).")
+    logger.info("Python HTTP trigger function processed a /predict request.")
 
     if model is None or tokenizer is None:
         logger.error("Model or Tokenizer not loaded. Cannot perform prediction.")
@@ -146,7 +146,7 @@ def predict_sentiment(req: func.HttpRequest) -> func.HttpResponse:
         response_data = SentimentPrediction(sentiment=sentiment_label, probability=float(estimated_prob))
         
         return func.HttpResponse(
-            response_data.model_dump_json(), # Pydantic v2+
+            response_data.model_dump_json(), 
             mimetype="application/json"
         )
 
@@ -160,15 +160,15 @@ def predict_sentiment(req: func.HttpRequest) -> func.HttpResponse:
 
 @app.route(route="/", methods=[func.HttpMethod.GET]) # Or route="" for the root
 def root_endpoint(req: func.HttpRequest) -> func.HttpResponse:
-    logger.info("Python HTTP trigger function processed a / request (v2 model).")
+    logger.info("Python HTTP trigger function processed a / request.")
     return func.HttpResponse(
-        json.dumps({"message": "API de prédiction de sentiment pour Air Paradis (Azure Function v2)"}),
+        json.dumps({"message": "API de prediction de sentiment pour Air Paradis)"}),
         mimetype="application/json"
     )
 
 @app.route(route="feedback", methods=[func.HttpMethod.POST])
 def log_feedback(req: func.HttpRequest) -> func.HttpResponse:
-    logger.info("Python HTTP trigger function processed a /feedback request (v2 model).")
+    logger.info("Python HTTP trigger function processed a /feedback request .")
 
     try:
         req_body = req.get_json()
