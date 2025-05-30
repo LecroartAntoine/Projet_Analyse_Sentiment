@@ -81,6 +81,7 @@ class FeedbackInput(BaseModel):
 # You can set a default authorization level for all HTTP functions here.
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
+@app.function_name(name="PREDICT")
 @app.route(route="predict", methods=[func.HttpMethod.POST])
 def predict_sentiment(payload: func.HttpRequest) -> func.HttpResponse:
     logger.info("Python HTTP trigger function processed a /predict request.")
@@ -152,6 +153,7 @@ def predict_sentiment(payload: func.HttpRequest) -> func.HttpResponse:
              mimetype="application/json"
         )
 
+@app.function_name(name="WELCOME")
 @app.route(route="/", methods=[func.HttpMethod.GET]) # Or route="" for the root
 def root_endpoint(payload: func.HttpRequest) -> func.HttpResponse:
     logger.info("Python HTTP trigger function processed a / request.")
@@ -160,6 +162,7 @@ def root_endpoint(payload: func.HttpRequest) -> func.HttpResponse:
         mimetype="application/json"
     )
 
+@app.function_name(name="FEEDBACK")
 @app.route(route="feedback", methods=[func.HttpMethod.POST])
 def log_feedback(payload: func.HttpRequest) -> func.HttpResponse:
     logger.info("Python HTTP trigger function processed a /feedback request .")
