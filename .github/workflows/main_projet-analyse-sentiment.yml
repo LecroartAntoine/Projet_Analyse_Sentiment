@@ -1,3 +1,7 @@
+# Docs for the Azure Web Apps Deploy action: https://github.com/azure/functions-action
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+# More info on Python, GitHub Actions, and Azure Functions: https://aka.ms/python-webapps-actions
+
 name: Build and deploy Python project to Azure Function App - Projet-Analyse-Sentiment
 
 on:
@@ -7,20 +11,14 @@ on:
   workflow_dispatch:
 
 env:
-  PYTHON_VERSION: '3.10'
-
-  AZURE_FUNCTIONAPP_ROOT_FOLDER: 'API'
-  MLFLOW_RUNS_DIR: 'Modélisation/mlruns'
-  MODEL_EXPERIMENT_ID: '604306899295521234'
-  MODEL_RUN_ID: 'b72ca14fe64c4a549306aebe1ba4641c' 
-  ARTIFACT_ZIP_NAME: 'python-app.zip'
-  APPLICATIONINSIGHTS_CONNECTION_STRING: "InstrumentationKey=ea4ee31a-3f2a-4700-a97a-9bf7927331e1;IngestionEndpoint=https://francecentral-1.in.applicationinsights.azure.com/;LiveEndpoint=https://francecentral.livediagnostics.monitor.azure.com/;ApplicationId=b9d6be7f-78af-4da6-9bbe-6281ab85d1aa"
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: '.' # set this to the path to your web app project, defaults to the repository root
+  PYTHON_VERSION: '3.10' # set this to the python version to use (supports 3.6, 3.7, 3.8)
 
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: read #This is required for actions/checkout
 
     steps:
       - name: Checkout repository
@@ -31,54 +29,47 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Create and start virtual environment (optional for GH Actions, but good for local consistency)
+      - name: Create and start virtual environment
         run: |
           python -m venv venv
           source venv/bin/activate
-      
-      - name: Install dependencies for the Function App
-        run: pip install -r ${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }}/requirements.txt
 
-      - name: Create model directory in Function App folder
-        run: mkdir -p ${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }}/model
+      - name: Install dependencies
+        run: pip install -r requirements.txt
 
-      - name: Run tests
-        working-directory: ./${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }}
-        run: |
-          pip install pytest # or other test runners
-          pytest
+      # Optional: Add step to run tests here
 
-      - name: Zip artifact for deployment (Function App folder contents)
-        run: |
-          cd ${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }}
-          zip -r ../${{ env.ARTIFACT_ZIP_NAME }} . -x "*venv/*" -x "*.git/*" -x "*__pycache__/*"
-          # The '..' means the zip file is created in the repository root.
+      - name: Zip artifact for deployment
+        run: zip release.zip ./* -r
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
-          name: python-app-artifact 
-          path: ${{ env.ARTIFACT_ZIP_NAME }} 
+          name: python-app
+          path: |
+            release.zip
+            !venv/
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
-    environment: 
-      name: 'Production'
-      url: ${{ steps.deploy-to-function.outputs.webapp-url }}
     
     steps:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
-          name: python-app-artifact 
+          name: python-app
 
-
+      - name: Unzip artifact for deployment
+        run: unzip release.zip     
+        
       - name: 'Deploy to Azure Functions'
-        uses: Azure/functions-action@v1.3.1
+        uses: Azure/functions-action@v1
         id: deploy-to-function
         with:
-          app-name: 'Projet-Analyse-Sentiment' 
-          slot-name: 'Production' 
-          package: ${{ env.ARTIFACT_ZIP_NAME }} 
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_18963F46B19E49D5A57355029EB94F04 }}
+          app-name: 'Projet-Analyse-Sentiment'
+          slot-name: 'Production'
+          package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_F8BFE4A9DA5C48E59CB1E5874563DF1B }}
+          sku: 'flexconsumption'
+        
