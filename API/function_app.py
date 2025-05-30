@@ -147,7 +147,7 @@ def predict_sentiment(req: func.HttpRequest) -> func.HttpResponse:
         )
 
 @app.function_name(name="WELCOME")
-@app.route(route="/", methods=[func.HttpMethod.GET]) # Or route="" for the root
+@app.route(route="", methods=[func.HttpMethod.GET]) # Or route="" for the root
 def root_endpoint(req: func.HttpRequest) -> func.HttpResponse:
     logger.info("Python HTTP trigger function processed a / request.")
     return func.HttpResponse(
