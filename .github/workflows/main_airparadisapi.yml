@@ -75,5 +75,5 @@ jobs:
         with:
           app-name: 'AirParadisAPI'
           slot-name: 'Production'
-          package: '.'
+          package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_E16982C6DF2E42B180F2AEDA5AE2C38B }}
