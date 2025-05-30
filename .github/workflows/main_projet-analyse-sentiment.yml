@@ -47,75 +47,136 @@ jobs:
 
       - name: Download latest registered model and tokenizer from MLflow
         run: |
-          # Ensure GITHUB_WORKSPACE is used for full paths if needed by Python os module
-          FULL_MLFLOW_TRACKING_PATH_ON_RUNNER="file://${{ github.workspace }}/${{ env.MLFLOW_TRACKING_URI_RELATIVE }}"
-          echo "Attempting to set MLFLOW_TRACKING_URI for Python script to: $FULL_MLFLOW_TRACKING_PATH_ON_RUNNER"
+          # ... (setup of env vars for Python script as before) ...
           
           python -c "
           import mlflow
           import shutil
           import os
+          import re # For regex
 
-          # Retrieve env vars passed to this python -c step
-          model_name = os.environ.get('MLFLOW_REGISTERED_MODEL_NAME_SCRIPT')
-          target_model_dir = os.environ.get('FUNCTION_APP_MODEL_DIR_ABSOLUTE_SCRIPT')
-          # Crucially, use the tracking URI passed via env var to this script
-          mlflow_tracking_uri_for_script = os.environ.get('MLFLOW_TRACKING_URI_FOR_PYTHON_SCRIPT')
+          # ... (retrieve env vars model_name, target_model_dir, mlflow_tracking_uri_for_script) ...
+          # ... (check if env vars are set) ...
 
-
-          print(f'Python script received MLFLOW_TRACKING_URI_FOR_PYTHON_SCRIPT: {mlflow_tracking_uri_for_script}')
-          print(f'Python script received model_name: {model_name}')
-          print(f'Python script received target_model_dir: {target_model_dir}')
-
-          if not all([model_name, target_model_dir, mlflow_tracking_uri_for_script]):
-              print('One or more critical environment variables for Python script not set!')
-              exit(1)
-
-          # Explicitly set the tracking URI for THIS MLflow client instance
           mlflow.set_tracking_uri(mlflow_tracking_uri_for_script)
-          print(f'Python script: MLflow tracking URI effectively set to: {mlflow.get_tracking_uri()}') # Verify this
+          print(f'Python script: MLflow tracking URI effectively set to: {mlflow.get_tracking_uri()}')
           
-          # Create a new client AFTER setting the tracking URI
-          client = mlflow.tracking.MlflowClient() 
+          client = mlflow.tracking.MlflowClient()
           
           try:
-              print(f'Fetching latest versions for model: {model_name} using client with URI: {client._tracking_client.tracking_uri}')
-              latest_version_info = client.get_latest_versions(model_name, stages=['None']) 
-              if not latest_version_info:
-                  print(f'No versions found for model {model_name} with stage None. Trying Production stage...')
-                  latest_version_info = client.get_latest_versions(model_name, stages=['Production'])
-                  if not latest_version_info:
-                      print(f'No versions found for model {model_name} with stage Production either.')
-                      exit(1)
+              print(f'Fetching latest versions for model: {model_name} using client with URI: {client._tracking_client.tracking_uri if hasattr(client, '_tracking_client') else 'N/A'}')
+              latest_version_info = client.get_latest_versions(model_name, stages=['None'])
+              # ... (handle if no versions found) ...
 
-              latest_model_version_obj = latest_version_info[0] 
-              run_id_from_registry = latest_model_version_obj.run_id # Get the run_id
-              
+              latest_model_version_obj = latest_version_info[0]
+              run_id_from_registry = latest_model_version_obj.run_id 
+              source_uri_from_registry = latest_model_version_obj.source
+
               print(f'Latest version for {model_name}: Version {latest_model_version_obj.version}, Run ID from registry: {run_id_from_registry}')
-              print(f'DEBUG: Source URI from registry: {latest_model_version_obj.source}') # This will show the c:/ path
+              print(f'DEBUG: Source URI from registry: {source_uri_from_registry}')
 
-              # --- Key Part: Use the run_id and relative artifact_path with mlflow.artifacts.download_artifacts ---
-              # This function should use the currently set tracking URI to find the run, then the relative path.
+              # --- Attempt to directly copy files if download_artifacts fails due to source URI ---
+              # This assumes MLFLOW_TRACKING_URI_RELATIVE points to 'Modélisation/mlruns'
+              # And github.workspace is the root of the repo on the runner.
 
-              # Artifact paths *relative to the root of the run's artifact store*
-              relative_model_artifact_path = 'model/data/model.keras'
-              relative_tokenizer_artifact_path = 'tokenizer/keras_tokenizer.pkl'
+              # Try to parse experiment_id and run_id from the source_uri_from_registry
+              # Regex to find .../mlruns/<experiment_id>/<run_id>/...
+              # This regex assumes 'mlruns' is in the path, followed by exp_id, then run_id
+              match = re.search(r'mlruns/([^/]+)/([^/]+)/artifacts', source_uri_from_registry)
+              experiment_id_from_source = None
+              run_id_from_source = None
+
+              if match:
+                  experiment_id_from_source = match.group(1)
+                  run_id_from_source = match.group(2)
+                  print(f'Parsed from source URI: Experiment ID = {experiment_id_from_source}, Run ID = {run_id_from_source}')
+                  if run_id_from_source != run_id_from_registry:
+                      print(f'WARNING: Run ID from registry ({run_id_from_registry}) differs from parsed Run ID ({run_id_from_source}). Using registry one.')
+              else:
+                  print(f'Could not parse experiment ID and Run ID from source URI: {source_uri_from_registry}')
+                  # Fallback or error - for now, let's try to proceed assuming run_id_from_registry is primary
+                  # If we can't get experiment_id, constructing the full path is hard without listing experiments.
+                  # However, the structure of mlruns usually uses experiment_id as a directory name.
+                  # Let's assume the experiment_id is needed for the path.
+                  # This part becomes tricky if we can't reliably get the experiment_id.
+
+              # Construct the base path to the checked-out mlruns on the runner
+              # GITHUB_WORKSPACE_FOR_PYTHON is passed from shell
+              github_workspace = os.environ.get('GITHUB_WORKSPACE_FOR_PYTHON')
+              mlflow_tracking_uri_relative_for_python = os.environ.get('MLFLOW_TRACKING_URI_RELATIVE_FOR_PYTHON')
               
-              print(f'Attempting to download from run_id: {run_id_from_registry}, artifact: {relative_model_artifact_path}')
-              mlflow.artifacts.download_artifacts(
-                  run_id=run_id_from_registry, # Use the run_id obtained from the registry
-                  artifact_path=relative_model_artifact_path, 
-                  dst_path=target_model_dir
-              )
-              # ... (file moving logic as before) ...
+              if not github_workspace or not mlflow_tracking_uri_relative_for_python:
+                  print('Error: GITHUB_WORKSPACE_FOR_PYTHON or MLFLOW_TRACKING_URI_RELATIVE_FOR_PYTHON not set for Python script.')
+                  exit(1)
 
-              print(f'Attempting to download from run_id: {run_id_from_registry}, artifact: {relative_tokenizer_artifact_path}')
-              mlflow.artifacts.download_artifacts(
-                  run_id=run_id_from_registry, # Use the run_id
-                  artifact_path=relative_tokenizer_artifact_path,
-                  dst_path=target_model_dir
-              )
-              # ... (file moving logic as before for tokenizer) ...
+              # Path to the root of the mlruns directory on the runner
+              base_mlruns_path_on_runner = os.path.join(github_workspace, mlflow_tracking_uri_relative_for_python)
+              print(f'Base mlruns path on runner: {base_mlruns_path_on_runner}')
+
+              # If we couldn't parse experiment_id, this approach is stuck.
+              # For now, let's assume we MUST have experiment_id_from_source if we go this manual route.
+              # A more robust way would be client.get_run(run_id_from_registry).info.experiment_id
+              try:
+                  run_info = client.get_run(run_id_from_registry)
+                  experiment_id_from_run_info = run_info.info.experiment_id
+                  print(f'Got Experiment ID from run_info: {experiment_id_from_run_info}')
+              except Exception as e_get_run:
+                  print(f'Could not get run_info for {run_id_from_registry}: {e_get_run}')
+                  print('Proceeding with parsed experiment_id if available, otherwise this manual copy will likely fail.')
+                  experiment_id_from_run_info = experiment_id_from_source # Fallback to parsed
+
+              if not experiment_id_from_run_info:
+                  print('CRITICAL: Cannot determine experiment ID. Manual file copy will fail.')
+                  # Attempt MLflow download one last time before failing completely
+                  try:
+                      print(f'Attempting mlflow.artifacts.download_artifacts one last time for model...')
+                      mlflow.artifacts.download_artifacts(run_id=run_id_from_registry, artifact_path='model/data/model.keras', dst_path=target_model_dir)
+                      # ... (move logic) ...
+                      print(f'Attempting mlflow.artifacts.download_artifacts one last time for tokenizer...')
+                      mlflow.artifacts.download_artifacts(run_id=run_id_from_registry, artifact_path='tokenizer/keras_tokenizer.pkl', dst_path=target_model_dir)
+                      # ... (move logic) ...
+                      print('MLflow download succeeded on last attempt.')
+                  except Exception as e_mlflow_dl:
+                      print(f'Final attempt with mlflow.artifacts.download_artifacts also failed: {e_mlflow_dl}')
+                      print('Exiting due to inability to fetch artifacts.')
+                      exit(1)
+              else:
+                  # --- Manual File Copy Logic ---
+                  runner_model_artifact_src_path = os.path.join(
+                      base_mlruns_path_on_runner,
+                      experiment_id_from_run_info, # Use experiment ID from run_info
+                      run_id_from_registry,        # Use run ID from registry
+                      'artifacts',
+                      'model', 'data', 'model.keras' # Relative path within artifacts
+                  )
+                  runner_tokenizer_artifact_src_path = os.path.join(
+                      base_mlruns_path_on_runner,
+                      experiment_id_from_run_info,
+                      run_id_from_registry,
+                      'artifacts',
+                      'tokenizer', 'keras_tokenizer.pkl'
+                  )
+
+                  final_model_path_in_target = os.path.join(target_model_dir, 'model.keras')
+                  final_tokenizer_path_in_target = os.path.join(target_model_dir, 'keras_tokenizer.pkl')
+
+                  print(f'Manually copying model from (runner path): {runner_model_artifact_src_path} to {final_model_path_in_target}')
+                  if os.path.exists(runner_model_artifact_src_path):
+                      shutil.copy(runner_model_artifact_src_path, final_model_path_in_target)
+                  else:
+                      print(f'ERROR: Source model file not found on runner: {runner_model_artifact_src_path}')
+                      exit(1)
+                  
+                  print(f'Manually copying tokenizer from (runner path): {runner_tokenizer_artifact_src_path} to {final_tokenizer_path_in_target}')
+                  if os.path.exists(runner_tokenizer_artifact_src_path):
+                      shutil.copy(runner_tokenizer_artifact_src_path, final_tokenizer_path_in_target)
+                  else:
+                      print(f'ERROR: Source tokenizer file not found on runner: {runner_tokenizer_artifact_src_path}')
+                      exit(1)
+                  
+                  print('Manual file copy completed.')
+              # --- End Manual File Copy Logic ---
+
 
               print(f'Model and tokenizer should be in {target_model_dir}')
               print('Final contents of target model directory:')
@@ -127,12 +188,12 @@ jobs:
               traceback.print_exc()
               exit(1)
           "
-
         env: 
           MLFLOW_REGISTERED_MODEL_NAME_SCRIPT: ${{ env.MLFLOW_REGISTERED_MODEL_NAME }}
           FUNCTION_APP_MODEL_DIR_ABSOLUTE_SCRIPT: ${{ env.FUNCTION_APP_MODEL_DIR_ABSOLUTE }}
-          # Pass the correctly constructed Linux file URI to the Python script
           MLFLOW_TRACKING_URI_FOR_PYTHON_SCRIPT: "file://${{ github.workspace }}/${{ env.MLFLOW_TRACKING_URI_RELATIVE }}"
+          GITHUB_WORKSPACE_FOR_PYTHON: ${{ github.workspace }} # Pass workspace to Python
+          MLFLOW_TRACKING_URI_RELATIVE_FOR_PYTHON: ${{ env.MLFLOW_TRACKING_URI_RELATIVE }} # Pass relative path
 
       - name: Zip artifact for deployment (Function App folder contents)
         run: |
