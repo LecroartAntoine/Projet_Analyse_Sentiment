@@ -39,9 +39,8 @@ if not any(isinstance(handler, AzureLogHandler) for handler in logger.handlers):
         logger.addHandler(logging.StreamHandler()) # Fallback if no connection string
         logger.warning("APPLICATIONINSIGHTS_CONNECTION_STRING not set. Logging to console.")
 
-MODEL_DIR = "./model"
-MODEL_FILE_PATH = os.path.join(MODEL_DIR, "model.keras")
-TOKENIZER_FILE_PATH = os.path.join(MODEL_DIR, "keras_tokenizer.pkl")
+MODEL_FILE_PATH = "model.keras"
+TOKENIZER_FILE_PATH = "tokenizer.pkl"
 MAX_SEQUENCE_LENGTH = 100
 
 model = None
