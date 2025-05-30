@@ -1,8 +1,7 @@
 import os
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
-from fastapi import FastAPI
-from pydantic import BaseModel
 import tensorflow as tf
+from pydantic import BaseModel
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 import pickle 
@@ -11,13 +10,15 @@ from opencensus.ext.azure.log_exporter import AzureLogHandler
 import logging
 import azure.functions as func
 
+import fastapi
+
 CONNECTION_STRING = os.environ.get("APPLICATIONINSIGHTS_CONNECTION_STRING")
 
 logger = logging.getLogger(__name__)
 logger.addHandler(AzureLogHandler(connection_string=CONNECTION_STRING))
 logger.setLevel(logging.INFO) 
 
-api = FastAPI()
+api = fastapi.FastAPI()
 
 try :
   model = load_model("./model/model.keras")

@@ -1,5 +1,5 @@
 from fastapi.testclient import TestClient
-from main import api
+from WrapperFunction import api
 import logging
 
 client = TestClient(api)
