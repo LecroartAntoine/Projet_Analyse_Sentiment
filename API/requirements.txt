@@ -1,6 +1,9 @@
 azure-functions
 fastapi
 uvicorn[standard]
+fastapi[all]
+fastapi[standard]
+httpx
 tensorflow-cpu
 pydantic
 opencensus
