@@ -1,16 +1,19 @@
+import azure.functions as func
+from opencensus.ext.azure.log_exporter import AzureLogHandler
+import logging
+import traceback
+
+import fastapi
+
 import os
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 import tensorflow as tf
 from pydantic import BaseModel
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.sequence import pad_sequences
-import pickle 
-import traceback
-from opencensus.ext.azure.log_exporter import AzureLogHandler
-import logging
-import azure.functions as func
 
-import fastapi
+import pickle 
+
 
 CONNECTION_STRING = os.environ.get("APPLICATIONINSIGHTS_CONNECTION_STRING")
 
