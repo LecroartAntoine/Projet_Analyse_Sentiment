@@ -20,7 +20,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read #This is required for actions/checkout
+      contents: read
 
     steps:
       - name: Checkout repository
@@ -37,26 +37,10 @@ jobs:
           source venv/bin/activate
       
       - name: Install dependencies for the Function App
-        # This installs requirements for your Function App, located in its root folder
         run: pip install -r ${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }}/requirements.txt
 
       - name: Create model directory in Function App folder
         run: mkdir -p ${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }}/model
-        # The -p flag ensures it doesn't error if the directory already exists
-
-      - name: Copy MLflow model artifacts to Function App model directory
-        run: |
-          echo "Locating MLflow artifacts..."
-          MLFLOW_ARTIFACT_SOURCE_PATH="${{ env.MLFLOW_RUNS_DIR }}/${{ env.MODEL_EXPERIMENT_ID }}/${{ env.MODEL_RUN_ID }}/artifacts"
-          
-          echo "Copying Keras model from: ${MLFLOW_ARTIFACT_SOURCE_PATH}/model/data/model.keras"
-          cp "${MLFLOW_ARTIFACT_SOURCE_PATH}/model/data/model.keras" "${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }}/model/model.keras"
-          
-          echo "Copying Keras tokenizer from: ${MLFLOW_ARTIFACT_SOURCE_PATH}/tokenizer/keras_tokenizer.pkl"
-          cp "${MLFLOW_ARTIFACT_SOURCE_PATH}/tokenizer/keras_tokenizer.pkl" "${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }}/model/keras_tokenizer.pkl"
-          
-          echo "Contents of target model directory:"
-          ls -lR ${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }}/model
 
       - name: Run tests
         working-directory: ./${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }}
@@ -65,24 +49,21 @@ jobs:
           pytest
 
       - name: Zip artifact for deployment (Function App folder contents)
-        # This step zips the contents of your AZURE_FUNCTIONAPP_ROOT_FOLDER (e.g., 'api')
-        # The resulting zip will have function_app.py, model/, requirements.txt etc. at its root.
         run: |
           cd ${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }}
           zip -r ../${{ env.ARTIFACT_ZIP_NAME }} . -x "*venv/*" -x "*.git/*" -x "*__pycache__/*"
           # The '..' means the zip file is created in the repository root.
-        # Ensure your function_app.py and host.json are directly inside the AZURE_FUNCTIONAPP_ROOT_FOLDER
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
-          name: python-app-artifact # Name of the artifact in GitHub Actions
-          path: ${{ env.ARTIFACT_ZIP_NAME }} # Path to the zip file created in the previous step
+          name: python-app-artifact 
+          path: ${{ env.ARTIFACT_ZIP_NAME }} 
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
-    environment: # Optional: If you have a GitHub Environment configured for 'Production'
+    environment: 
       name: 'Production'
       url: ${{ steps.deploy-to-function.outputs.webapp-url }}
     
@@ -90,26 +71,14 @@ jobs:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
-          name: python-app-artifact # Must match the upload name
-          # This will download and extract the zip to the current directory by default.
-          # If it downloads the zip itself, the next step is fine.
-          # If it extracts, then 'package' in deploy needs to point to the folder.
-          # Let's assume it downloads the zip file.
+          name: python-app-artifact 
 
-      # No explicit unzip step needed if Azure/functions-action can take a zip.
-      # If Azure/functions-action@v1 expects a folder path after manual unzipping,
-      # you would add an unzip step here and change 'package' below.
-      # However, it usually handles zip files directly.
 
       - name: 'Deploy to Azure Functions'
-        uses: Azure/functions-action@v1
+        uses: Azure/functions-action@v1.3.1
         id: deploy-to-function
         with:
-          app-name: 'Projet-Analyse-Sentiment' # Your Function App Name
-          slot-name: 'Production' # Or your desired slot
-          package: ${{ env.ARTIFACT_ZIP_NAME }} # Path to the zip file downloaded from artifacts
+          app-name: 'Projet-Analyse-Sentiment' 
+          slot-name: 'Production' 
+          package: ${{ env.ARTIFACT_ZIP_NAME }} 
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_18963F46B19E49D5A57355029EB94F04 }}
-          # The 'sku' parameter is generally not set in the deployment action itself, 
-          # as SKU is part of the App Service Plan / Function App hosting plan configuration in Azure.
-          # You can remove it if it causes issues or is not needed.
-          # sku: 'flexconsumption' 
