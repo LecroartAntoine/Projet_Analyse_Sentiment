@@ -19,8 +19,6 @@ def ensure_model_loaded():
     if model is None or tokenizer is None:
         pytest.fail("Model or tokenizer failed to load. Check shared_code/app_setup.py and model paths.")
     logger.info("Model and tokenizer are loaded for tests.")
-    # You could potentially set a test-specific APPLICATIONINSIGHTS_CONNECTION_STRING here if needed
-    # os.environ["APPLICATIONINSIGHTS_CONNECTION_STRING"] = "..."
 
 
 def create_mock_http_request(
