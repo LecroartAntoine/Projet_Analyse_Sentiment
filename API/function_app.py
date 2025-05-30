@@ -1,5 +1,5 @@
 import azure.functions as func
 
-from WrapperFunction import app as fastapi_app
+from WrapperFunction import api as fastapi_api
 
-app = func.AsgiFunctionApp(app=fastapi_app, http_auth_level=func.AuthLevel.ANONYMOUS)
+app = func.AsgiFunctionApp(app=fastapi_api, http_auth_level=func.AuthLevel.ANONYMOUS)
