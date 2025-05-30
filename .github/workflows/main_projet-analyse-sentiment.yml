@@ -1,7 +1,3 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/azure/functions-action
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-# More info on Python, GitHub Actions, and Azure Functions: https://aka.ms/python-webapps-actions
-
 name: Build and deploy Python project to Azure Function App - Projet-Analyse-Sentiment
 
 on:
@@ -11,65 +7,167 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_FUNCTIONAPP_PACKAGE_PATH: '.' # set this to the path to your web app project, defaults to the repository root
-  PYTHON_VERSION: '3.10' # set this to the python version to use (supports 3.6, 3.7, 3.8)
+  PYTHON_VERSION: '3.10'
+  AZURE_FUNCTIONAPP_ROOT_FOLDER: 'api'
+  # Name of the model registered in MLflow
+  MLFLOW_REGISTERED_MODEL_NAME: 'MODEL_ADVANCED'
+  # Path where MLflow data is stored in your repository
+  MLFLOW_TRACKING_URI_RELATIVE: 'Modélisation/mlruns' # Relative to repo root
+  ARTIFACT_ZIP_NAME: 'python-app.zip'
+  # Target directory for model files within the Function App
+  FUNCTION_APP_MODEL_DIR: '${{ github.workspace }}/${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }}/model'
 
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read #This is required for actions/checkout
+      contents: read
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # Fetch all history for all branches and tags.
+          # This might be needed if MLflow relies on git history for some operations,
+          # or if your mlruns directory is large and you use LFS.
+          fetch-depth: 0 
 
       - name: Setup Python version
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Create and start virtual environment
+      - name: Install MLflow and Function App dependencies
         run: |
-          python -m venv venv
-          source venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install mlflow # For fetching the model
+          pip install -r ${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }}/requirements.txt
+      
+      - name: Create target model directory in Function App folder
+        run: mkdir -p ${{ env.FUNCTION_APP_MODEL_DIR }}
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+      - name: Download latest registered model and tokenizer from MLflow
+        # This step assumes your mlruns directory is part of the checked-out repository
+        # and MLflow can use it as a local file-based tracking URI.
+        run: |
+          echo "Setting MLFLOW_TRACKING_URI to local path: file://${{ github.workspace }}/${{ env.MLFLOW_TRACKING_URI_RELATIVE }}"
+          export MLFLOW_TRACKING_URI="file://${{ github.workspace }}/${{ env.MLFLOW_TRACKING_URI_RELATIVE }}"
+          
+          echo "Fetching latest version for model: ${{ env.MLFLOW_REGISTERED_MODEL_NAME }}"
+          
+          # Using Python to get model details and download
+          python -c "
+          import mlflow
+          import shutil
+          import os
 
-      # Optional: Add step to run tests here
+          model_name = '${{ env.MLFLOW_REGISTERED_MODEL_NAME }}'
+          target_model_dir = '${{ env.FUNCTION_APP_MODEL_DIR }}'
+          
+          client = mlflow.tracking.MlflowClient()
+          
+          try:
+              latest_version_info = client.get_latest_versions(model_name, stages=['None']) # Or 'Production', 'Staging' if you use stages
+              if not latest_version_info:
+                  print(f'No versions found for model {model_name} with stage None.')
+                  # If you use stages like 'Production', try that:
+                  latest_version_info = client.get_latest_versions(model_name, stages=['Production'])
+                  if not latest_version_info:
+                      print(f'No versions found for model {model_name} with stage Production either.')
+                      exit(1)
 
-      - name: Zip artifact for deployment
-        run: zip release.zip ./* -r
+              # Get the first one (should be the latest if stages=['None'] or only one in 'Production')
+              latest_model = latest_version_info[0]
+              run_id = latest_model.run_id
+              model_source_uri = latest_model.source # This is the artifact URI like 'runs:/<run_id>/model' or 'mlruns:/<exp_id>/<run_id>/artifacts/model'
+              print(f'Latest version for {model_name}: Version {latest_model.version}, Run ID: {run_id}, Source: {model_source_uri}')
+
+              # MLflow download_artifacts path is relative to the artifact root of the run
+              # 1. Download the Keras model
+              # The model logged by mlflow.tensorflow.log_model or mlflow.keras.log_model is usually a directory
+              # named 'model' (or whatever you named it during logging) containing model.keras or saved_model.pb etc.
+              # We assume the Keras model is 'model/data/model.keras' WITHIN the artifacts of that run
+              mlflow.artifacts.download_artifacts(
+                  run_id=run_id,
+                  artifact_path='model/data/model.keras', # Path *within* the run's artifacts
+                  dst_path=target_model_dir
+              )
+              # Rename if download_artifacts doesn't place it with the exact name
+              if os.path.exists(os.path.join(target_model_dir, 'model.keras')):
+                  print('Keras model downloaded.')
+              else: # If it was downloaded into a subdirectory (e.g. 'model.keras/model.keras')
+                  # This part needs adjustment based on how download_artifacts places the file
+                  print(f'Keras model file not found directly. Check contents of {target_model_dir}')
+                  # For example, if it downloads the full path 'model/data/model.keras':
+                  # source_keras_path = os.path.join(target_model_dir, 'model', 'data', 'model.keras')
+                  # if os.path.exists(source_keras_path):
+                  #    shutil.move(source_keras_path, os.path.join(target_model_dir, 'model.keras'))
+                  #    shutil.rmtree(os.path.join(target_model_dir, 'model')) # Clean up empty dirs
+                  # else:
+                  #    print('Could not locate model.keras after download.')
+                  #    exit(1)
+
+              # 2. Download the tokenizer
+              # We assume the tokenizer is 'tokenizer/keras_tokenizer.pkl' WITHIN the artifacts of that run
+              mlflow.artifacts.download_artifacts(
+                  run_id=run_id,
+                  artifact_path='tokenizer/keras_tokenizer.pkl', # Path *within* the run's artifacts
+                  dst_path=target_model_dir
+              )
+              if os.path.exists(os.path.join(target_model_dir, 'keras_tokenizer.pkl')):
+                 print('Tokenizer downloaded.')
+              else:
+                 print(f'Tokenizer file not found directly. Check contents of {target_model_dir}')
+                 # Add similar logic as for model.keras if needed
+                 # exit(1)
+
+              print(f'Model and tokenizer downloaded to {target_model_dir}')
+              print('Contents of target model directory:')
+              os.system(f'ls -lR {target_model_dir}')
+
+          except Exception as e:
+              print(f'Error fetching/downloading model: {e}')
+              exit(1)
+          "
+        env:
+          # Pass env vars to the python script if needed, though here they are directly embedded
+          MLFLOW_REGISTERED_MODEL_NAME: ${{ env.MLFLOW_REGISTERED_MODEL_NAME }}
+          FUNCTION_APP_MODEL_DIR: ${{ env.FUNCTION_APP_MODEL_DIR }}
+          MLFLOW_TRACKING_URI: "file://${{ github.workspace }}/${{ env.MLFLOW_TRACKING_URI_RELATIVE }}"
+
+
+      # Optional: Run tests for your Function App code here (after model is downloaded)
+
+      - name: Zip artifact for deployment (Function App folder contents)
+        run: |
+          cd ${{ env.AZURE_FUNCTIONAPP_ROOT_FOLDER }}
+          zip -r ../${{ env.ARTIFACT_ZIP_NAME }} . -x "*venv/*" -x "*.git/*" -x "*__pycache__/*"
+        working-directory: ${{ github.workspace }} # Ensure zip command is run from repo root if using ../
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
-          name: python-app
-          path: |
-            release.zip
-            !venv/
+          name: python-app-artifact
+          path: ${{ env.ARTIFACT_ZIP_NAME }}
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
+    environment:
+      name: 'Production'
+      url: ${{ steps.deploy-to-function.outputs.webapp-url }}
     
     steps:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
-          name: python-app
+          name: python-app-artifact
 
-      - name: Unzip artifact for deployment
-        run: unzip release.zip     
-        
       - name: 'Deploy to Azure Functions'
         uses: Azure/functions-action@v1
         id: deploy-to-function
         with:
           app-name: 'Projet-Analyse-Sentiment'
           slot-name: 'Production'
-          package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+          package: ${{ env.ARTIFACT_ZIP_NAME }}
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_18963F46B19E49D5A57355029EB94F04 }}
-          sku: 'flexconsumption'
-        

@@ -1,0 +1,6 @@
+azure-functions
+fastapi[standard]
+tensorflow-cpu
+pydantic
+opencensus
+opencensus-ext-azure
