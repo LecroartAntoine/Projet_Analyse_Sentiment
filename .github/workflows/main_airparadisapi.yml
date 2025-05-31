@@ -10,6 +10,9 @@ on:
       - main
   workflow_dispatch:
 
+env :
+  APPLICATIONINSIGHTS_CONNECTION_STRING: "InstrumentationKey=dfdafc2a-cce1-49a5-867b-543df653ec33;IngestionEndpoint=https://francecentral-1.in.applicationinsights.azure.com/;LiveEndpoint=https://francecentral.livediagnostics.monitor.azure.com/;ApplicationId=844a230a-ca38-4330-8042-65002bb4e889"
+
 jobs:
   build:
     runs-on: ubuntu-latest
