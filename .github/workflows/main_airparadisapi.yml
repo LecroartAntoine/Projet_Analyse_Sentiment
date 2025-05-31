@@ -38,7 +38,7 @@ jobs:
       - name: Run Tests
         run: |
           source ./api/venv/bin/activate
-          cd /api
+          cd ./api
           pytest
 
       - name: Zip artifact for deployment
