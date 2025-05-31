@@ -37,7 +37,8 @@ jobs:
       # Optional: Add step to run tests here (PyTest, Django test suites, etc.)
       - name: Run Tests
         run: |
-          cd api
+          source ./api/venv/bin/activate
+          cd /api
           pytest
 
       - name: Zip artifact for deployment
