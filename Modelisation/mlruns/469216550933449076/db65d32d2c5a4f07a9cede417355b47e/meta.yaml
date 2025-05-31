@@ -1,0 +1,15 @@
+artifact_uri: file:///c:/Users/LeBonCassoulet/Documents/GitHub/Projet_Analyse_Sentiment/Mod%C3%A9lisation/mlruns/469216550933449076/db65d32d2c5a4f07a9cede417355b47e/artifacts
+end_time: 1748007445356
+entry_point_name: ''
+experiment_id: '469216550933449076'
+lifecycle_stage: active
+run_id: db65d32d2c5a4f07a9cede417355b47e
+run_name: DistilBERT_FineTuning_CPU
+run_uuid: db65d32d2c5a4f07a9cede417355b47e
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1748007071408
+status: 4
+tags: []
+user_id: LeBonCassoulet

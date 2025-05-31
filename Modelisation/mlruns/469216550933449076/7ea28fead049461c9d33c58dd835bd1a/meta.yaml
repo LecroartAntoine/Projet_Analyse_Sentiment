@@ -1,0 +1,15 @@
+artifact_uri: file:///c:/Users/LeBonCassoulet/Documents/GitHub/Projet_Analyse_Sentiment/Mod%C3%A9lisation/mlruns/469216550933449076/7ea28fead049461c9d33c58dd835bd1a/artifacts
+end_time: 1748002350091
+entry_point_name: ''
+experiment_id: '469216550933449076'
+lifecycle_stage: active
+run_id: 7ea28fead049461c9d33c58dd835bd1a
+run_name: FineTune_distilbert-base-uncased
+run_uuid: 7ea28fead049461c9d33c58dd835bd1a
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1748002188798
+status: 4
+tags: []
+user_id: LeBonCassoulet

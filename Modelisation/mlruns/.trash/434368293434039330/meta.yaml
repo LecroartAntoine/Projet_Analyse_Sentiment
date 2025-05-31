@@ -1,0 +1,7 @@
+artifact_location: file:///c:/Users/LeBonCassoulet/Documents/GitHub/Projet_Analyse_Sentiment/Mod%C3%A9lisation/mlruns/434368293434039330
+creation_time: 1748006195376
+experiment_id: '434368293434039330'
+last_update_time: 1748008196624
+lifecycle_stage: deleted
+name: P7_BERT_Sentiment_Analysis_CPU
+tags: {}

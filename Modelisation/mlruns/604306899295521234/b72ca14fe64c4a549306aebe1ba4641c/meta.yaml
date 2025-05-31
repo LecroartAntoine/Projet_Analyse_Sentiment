@@ -1,0 +1,15 @@
+artifact_uri: file:///c:/Users/LeBonCassoulet/Documents/GitHub/Projet_Analyse_Sentiment/Mod%C3%A9lisation/mlruns/604306899295521234/b72ca14fe64c4a549306aebe1ba4641c/artifacts
+end_time: 1747404636501
+entry_point_name: ''
+experiment_id: '604306899295521234'
+lifecycle_stage: active
+run_id: b72ca14fe64c4a549306aebe1ba4641c
+run_name: LSTM_Trainable_Embeddings
+run_uuid: b72ca14fe64c4a549306aebe1ba4641c
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1747403716797
+status: 3
+tags: []
+user_id: LeBonCassoulet

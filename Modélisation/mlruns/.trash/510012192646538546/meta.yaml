@@ -1,7 +1,0 @@
-artifact_location: file:///c:/Users/LeBonCassoulet/Documents/GitHub/Projet_Analyse_Sentiment/Mod%C3%A9lisation/mlruns/510012192646538546
-creation_time: 1748006578907
-experiment_id: '510012192646538546'
-last_update_time: 1748008194448
-lifecycle_stage: deleted
-name: BERT_Sentiment_Analysis
-tags: {}

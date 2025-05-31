@@ -1,0 +1,15 @@
+artifact_uri: file:///c:/Users/LeBonCassoulet/Documents/GitHub/Projet_Analyse_Sentiment/Mod%C3%A9lisation/mlruns/897408299388468996/4fb4147d5e35430aa459c9f07b857a4a/artifacts
+end_time: 1745587360304
+entry_point_name: ''
+experiment_id: '897408299388468996'
+lifecycle_stage: active
+run_id: 4fb4147d5e35430aa459c9f07b857a4a
+run_name: LogisticRegression_TFIDF
+run_uuid: 4fb4147d5e35430aa459c9f07b857a4a
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1745587327367
+status: 3
+tags: []
+user_id: LeBonCassoulet

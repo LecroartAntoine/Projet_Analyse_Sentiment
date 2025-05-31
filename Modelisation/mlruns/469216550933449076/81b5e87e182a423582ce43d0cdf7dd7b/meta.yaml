@@ -1,0 +1,15 @@
+artifact_uri: file:///c:/Users/LeBonCassoulet/Documents/GitHub/Projet_Analyse_Sentiment/Mod%C3%A9lisation/mlruns/469216550933449076/81b5e87e182a423582ce43d0cdf7dd7b/artifacts
+end_time: 1748004878784
+entry_point_name: ''
+experiment_id: '469216550933449076'
+lifecycle_stage: active
+run_id: 81b5e87e182a423582ce43d0cdf7dd7b
+run_name: FineTune_distiled_bert_model
+run_uuid: 81b5e87e182a423582ce43d0cdf7dd7b
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1748004869944
+status: 3
+tags: []
+user_id: LeBonCassoulet

@@ -26,16 +26,22 @@ jobs:
 
       - name: Create and start virtual environment
         run: |
-          python -m venv venv
-          source venv/bin/activate
+          python -m venv ./api/venv
+          source ./api/venv/bin/activate
       
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          source ./api/venv/bin/activate
+          pip install -r ./api/requirements.txt
         
       # Optional: Add step to run tests here (PyTest, Django test suites, etc.)
+      - name: Run Tests
+        run: |
+          cd api
+          pytest
 
       - name: Zip artifact for deployment
-        run: zip release.zip ./* -r
+        run: zip release.zip ./api/* -r
 
       - name: Upload artifact for deployment jobs
         uses: actions/upload-artifact@v4
@@ -43,7 +49,7 @@ jobs:
           name: python-app
           path: |
             release.zip
-            !venv/
+            !/api/venv/
 
   deploy:
     runs-on: ubuntu-latest
