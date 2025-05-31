@@ -15,49 +15,21 @@ from opencensus.ext.azure.log_exporter import AzureLogHandler
 logger = logging.getLogger("SentimentAnalysisApp") # Custom logger name
 logger.setLevel(logging.INFO)
 
-# Prevent adding handler multiple times
-if not any(isinstance(handler, AzureLogHandler) for handler in logger.handlers):
-    CONNECTION_STRING = os.environ.get("APPLICATIONINSIGHTS_CONNECTION_STRING")
-    if CONNECTION_STRING:
-        try:
-            azure_log_handler = AzureLogHandler(connection_string=CONNECTION_STRING)
-            logger.addHandler(azure_log_handler)
-            logger.info("AzureLogHandler configured successfully for SentimentAnalysisApp.")
-        except Exception as e:
-            # Fallback to console logging if App Insights handler fails
-            print(f"ERROR: Failed to initialize AzureLogHandler: {e}") # Print for immediate visibility
-            logger.addHandler(logging.StreamHandler()) # Add console handler
-            logger.error(f"Failed to initialize AzureLogHandler: {e}")
-    else:
-        logger.addHandler(logging.StreamHandler()) # Fallback if no connection string
-        logger.warning("APPLICATIONINSIGHTS_CONNECTION_STRING not set. Logging to console.")
+app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
+
 
 MODEL_FILE_PATH = "./model.keras"
 TOKENIZER_FILE_PATH = "./tokenizer.pkl"
 MAX_SEQUENCE_LENGTH = 100
 
-model = None
-tokenizer = None
 
-model_exists = os.path.exists(MODEL_FILE_PATH)
-tokenizer_exists = os.path.exists(TOKENIZER_FILE_PATH)
-
-if model_exists and tokenizer_exists:
-    try:
-        model = load_model(MODEL_FILE_PATH)
-        with open(TOKENIZER_FILE_PATH, 'rb') as handle:
-            tokenizer = pickle.load(handle)
-        logger.info("Model and tokenizer loaded successfully!")
-    except Exception:
-        logger.error(f"Error loading model or tokenizer: {traceback.format_exc()}")
-        # model and tokenizer will remain None
-else:
-    if not model_exists:
-        logger.error(f"Model file not found at expected path: {os.path.abspath(MODEL_FILE_PATH)}")
-    if not tokenizer_exists:
-        logger.error(f"Tokenizer file not found at expected path: {os.path.abspath(TOKENIZER_FILE_PATH)}")
-    logger.error("Model or tokenizer file missing. Prediction will not be available.")
-
+try:
+    model = load_model(MODEL_FILE_PATH)
+    with open(TOKENIZER_FILE_PATH, 'rb') as handle:
+        tokenizer = pickle.load(handle)
+    logger.info("Model and tokenizer loaded successfully!")
+except Exception:
+    logger.error(f"Error loading model or tokenizer: {traceback.format_exc()}")
 
 # --- Pydantic Models ---
 class TweetInput(BaseModel):
@@ -72,19 +44,18 @@ class FeedbackInput(BaseModel):
     predicted_sentiment: str
     actual_sentiment_is_different: bool
 
-app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
-@app.function_name(name="PREDICT")
-@app.route(route="predict", methods=[func.HttpMethod.POST])
-def predict_sentiment(req: func.HttpRequest) -> func.HttpResponse:
+@app.route(route="predict")
+def predict(req: func.HttpRequest) -> func.HttpResponse:
+    
     logger.info("Python HTTP trigger function processed a /predict request.")
 
     if model is None or tokenizer is None:
         logger.error("Model or Tokenizer not loaded. Cannot perform prediction.")
         return func.HttpResponse(
-             json.dumps({"error": "Model or Tokenizer not available. Check server logs."}),
-             status_code=503, # Service Unavailable
-             mimetype="application/json"
+            json.dumps({"error": "Model or Tokenizer not available. Check server logs."}),
+            status_code=503,
+            mimetype="application/json"
         )
 
     try:
@@ -92,8 +63,8 @@ def predict_sentiment(req: func.HttpRequest) -> func.HttpResponse:
     except ValueError:
         logger.error("Invalid JSON format in request body.")
         return func.HttpResponse(
-             "Please pass a valid JSON object in the request body",
-             status_code=400
+            "Please pass a valid JSON object in the request body",
+            status_code=400
         )
 
     try:
@@ -141,23 +112,22 @@ def predict_sentiment(req: func.HttpRequest) -> func.HttpResponse:
     except Exception as e:
         logger.error(f"Error during prediction: {traceback.format_exc()}")
         return func.HttpResponse(
-             json.dumps({"error": "An error occurred during prediction.", "details": str(e)}),
-             status_code=500,
-             mimetype="application/json"
+            json.dumps({"error": "An error occurred during prediction.", "details": str(e)}),
+            status_code=500,
+            mimetype="application/json"
         )
 
-@app.function_name(name="WELCOME")
-@app.route(route="", methods=[func.HttpMethod.GET]) # Or route="" for the root
-def root_endpoint(req: func.HttpRequest) -> func.HttpResponse:
+
+@app.route(route="welcome")
+def welcome(req: func.HttpRequest) -> func.HttpResponse:
     logger.info("Python HTTP trigger function processed a / request.")
     return func.HttpResponse(
         json.dumps({"message": "API de prédiction de sentiment pour Air Paradis"}),
         mimetype="application/json"
     )
-
-@app.function_name(name="FEEDBACK")
-@app.route(route="feedback", methods=[func.HttpMethod.POST])
-def log_feedback(req: func.HttpRequest) -> func.HttpResponse:
+    
+@app.route(route="feedback")
+def feedback(req: func.HttpRequest) -> func.HttpResponse:
     logger.info("Python HTTP trigger function processed a /feedback request .")
 
     try:
