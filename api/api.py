@@ -16,6 +16,7 @@ import logging
 from opencensus.ext.azure.trace_exporter import AzureExporter
 from opencensus.trace.samplers import ProbabilitySampler
 from opencensus.trace.tracer import Tracer
+import uvicorn
 
 CONNECTION_STRING = os.environ.get("APPLICATIONINSIGHTS_CONNECTION_STRING")
 
@@ -84,3 +85,6 @@ async def log_feedback(feedback: FeedbackInput):
           span.add_attribute("predicted_sentiment", feedback.predicted_sentiment)
         return {"message": "Merci ! L'erreur a été signalée pour analyse."}
     return {"message": "Merci pour votre retour !"}
+  
+if __name__ == "__main__":
+  uvicorn.run("api:api", host="0.0.0.0", port=8080)
