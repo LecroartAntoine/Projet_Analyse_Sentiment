@@ -56,18 +56,25 @@ jobs:
           echo "-------------------------------"
 
       - name: Sync application files (api/ folder) to server
+        shell: bash -e {0} # Ensures bash, exits on error
         run: |
+          echo "--- Environment for Sync Step ---"
           echo "Current working directory: $(pwd)"
-          echo "Listing contents of current directory:"
-          ls -la
-          echo "Checking specifically for ./api/ directory:"
-          ls -ld ./api/
-          echo "Attempting to run rsync command using absolute path..."
+          echo "User: $(whoami)"
+          echo "PATH: $PATH"
+          echo "--- Checking rsync again in THIS step ---"
+          which rsync
+          ls -l $(which rsync || echo "/dev/null") # List details if found, else /dev/null
+          /usr/bin/rsync --version || echo "/usr/bin/rsync --version failed"
+          echo "-------------------------------"
+          
+          echo "Attempting to rsync from ./api/ using /usr/bin/rsync"
           /usr/bin/rsync -avz --delete \
             --exclude='__pycache__/' \
             --exclude='*.pyc' \
             --exclude='venv/' \
-            ./api/ ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }}:/srv/my_fastapi_app/
+            ./api/ ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }}:/srv/airparadisapi/
+          echo "Rsync command completed."
 
       - name: Execute remote commands
         uses: appleboy/ssh-action@v1.0.3 
