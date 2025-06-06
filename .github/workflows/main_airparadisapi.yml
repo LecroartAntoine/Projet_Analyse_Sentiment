@@ -42,12 +42,24 @@ jobs:
           ssh-keyscan -H ${{ secrets.REMOTE_HOST }} >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
 
-      - name: Install rsync
-        run: sudo apt-get update && sudo apt-get install -y rsync
+      - name: Install rsync and debug
+        run: |
+          echo "Attempting to install rsync..."
+          sudo apt-get update -qq
+          sudo apt-get install -y rsync
+          echo "Finished attempting to install rsync."
+          echo "--- Checking rsync installation ---"
+          which rsync # <-- THIS LINE
+          rsync --version
+          echo "--- Checking PATH ---"
+          echo $PATH
+          echo "-------------------------------"
 
       - name: Sync application files (api/ folder) to server
         run: |
-          rsync -avz --delete \
+          echo "PATH for this step: $PATH"
+          echo "Attempting to run rsync command using absolute path..."
+          /usr/bin/rsync -avz --delete \  # <-- USE THE ABSOLUTE PATH
             --exclude='__pycache__/' \
             --exclude='*.pyc' \
             --exclude='venv/' \
