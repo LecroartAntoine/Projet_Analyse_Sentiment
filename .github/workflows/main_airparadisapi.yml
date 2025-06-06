@@ -62,7 +62,16 @@ jobs:
           script: |
             set -e # Exit immediately if a command exits with a non-zero status.
 
-            APP_DIR="/srv/my_fastapi_app" # This is where SCP copied the files
+            # Ensure python3-venv is installed
+            if ! dpkg -s python3-venv > /dev/null 2>&1; then
+              echo "python3-venv not found. Installing..."
+              sudo apt-get update -qq # -qq for quieter output
+              sudo apt-get install -y python3-venv
+            else
+              echo "python3-venv is already installed."
+            fi
+
+            APP_DIR="/srv/my_fastapi_app"
             VENV_DIR="$APP_DIR/venv"
             PYTHON_EXECUTABLE="$VENV_DIR/bin/python"
             PIP_EXECUTABLE="$VENV_DIR/bin/pip"
