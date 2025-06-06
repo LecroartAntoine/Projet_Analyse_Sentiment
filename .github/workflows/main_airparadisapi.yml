@@ -26,7 +26,8 @@ jobs:
           # pip install pytest # Or include it in a dev-requirements.txt
 
       - name: Run tests
-        # If your tests are inside api/ and can be run from the repo root:
+        env : 
+          APPLICATIONINSIGHTS_CONNECTION_STRING : ${{ secrets.APPLICATIONINSIGHTS_CONNECTION_STRING }}
         run: pytest
         # If your tests need to be run from within the api/ directory:
         # working-directory: ./api
