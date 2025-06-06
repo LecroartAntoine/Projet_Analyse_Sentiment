@@ -44,12 +44,12 @@ jobs:
 
       - name: Create deployment directory on server (if it doesn't exist)
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }} "mkdir -p /srv/my_fastapi_app"
+          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }} "mkdir -p /srv/airparadis"
 
       - name: Sync application files (api/ folder) to server using SCP
         run: |
           echo "Copying contents of ./api/ to server..."
-          scp -r -o StrictHostKeyChecking=no ./api/* ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }}:/srv/my_fastapi_app/
+          scp -r -o StrictHostKeyChecking=no ./api/* ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }}:/srv/airparadis/
           echo "SCP command finished."
 
       - name: Execute remote commands (venv setup, install, restart service)
@@ -71,11 +71,11 @@ jobs:
               echo "python3-venv is already installed."
             fi
 
-            APP_DIR="/srv/my_fastapi_app"
+            APP_DIR="/srv/airparadis"
             VENV_DIR="$APP_DIR/venv"
             PYTHON_EXECUTABLE="$VENV_DIR/bin/python" # This will be created by the new venv
             PIP_EXECUTABLE="$VENV_DIR/bin/pip"       # This will be created by the new venv
-            SERVICE_NAME="my_fastapi_app"
+            SERVICE_NAME="airparadis"
 
             echo "Changing to app directory: $APP_DIR"
             cd $APP_DIR || { echo "Failed to cd to $APP_DIR"; exit 1; }
