@@ -65,7 +65,7 @@ jobs:
             # Ensure python3-venv is installed
             if ! dpkg -s python3-venv > /dev/null 2>&1; then
               echo "python3-venv not found. Installing..."
-              sudo apt-get update -qq # -qq for quieter output
+              sudo apt-get update -qq
               sudo apt-get install -y python3-venv
             else
               echo "python3-venv is already installed."
@@ -73,36 +73,44 @@ jobs:
 
             APP_DIR="/srv/my_fastapi_app"
             VENV_DIR="$APP_DIR/venv"
-            PYTHON_EXECUTABLE="$VENV_DIR/bin/python"
-            PIP_EXECUTABLE="$VENV_DIR/bin/pip"
-            SERVICE_NAME="my_fastapi_app" # Should match your systemd service filename (e.g., sentiment_api if you changed it)
+            PYTHON_EXECUTABLE="$VENV_DIR/bin/python" # This will be created by the new venv
+            PIP_EXECUTABLE="$VENV_DIR/bin/pip"       # This will be created by the new venv
+            SERVICE_NAME="my_fastapi_app"
 
             echo "Changing to app directory: $APP_DIR"
             cd $APP_DIR || { echo "Failed to cd to $APP_DIR"; exit 1; }
 
             echo "Creating/Updating .env file from GitHub Secret"
-            printf "%s\n" "${{ secrets.DOT_ENV_CONTENT }}" > .env
-            chmod 600 .env
+            # Using heredoc for robustness
+            cat << EOF > .env
+            ${{ secrets.DOT_ENV_CONTENT }}
+            EOF
+              chmod 600 .env
 
-            echo "Setting up/updating Python virtual environment in $VENV_DIR"
-            if [ ! -d "$VENV_DIR" ]; then
+              echo "Setting up Python virtual environment in $VENV_DIR"
+              # Remove existing venv directory to ensure a clean state
+              if [ -d "$VENV_DIR" ]; then
+                echo "Removing existing virtual environment directory: $VENV_DIR"
+                sudo rm -rf "$VENV_DIR" # Use sudo if the user doesn't have perms, or ensure deploy_user owns APP_DIR
+              fi
               echo "Creating new virtual environment."
-              python3 -m venv $VENV_DIR
-            else
-              echo "Virtual environment already exists."
-            fi
+              python3 -m venv "$VENV_DIR" # Now this should create a complete venv
 
-            echo "Activating virtual environment and installing/updating dependencies"
-            # requirements.txt is now directly in $APP_DIR (synced from local api/requirements.txt)
-            $PIP_EXECUTABLE install --upgrade pip
-            $PIP_EXECUTABLE install -r requirements.txt
+              echo "Installing/updating dependencies"
+              # Check if pip executable exists before trying to use it
+              if [ ! -f "$PIP_EXECUTABLE" ]; then
+                  echo "ERROR: pip executable not found at $PIP_EXECUTABLE after creating venv."
+                  exit 1
+              fi
+              $PIP_EXECUTABLE install --upgrade pip
+              $PIP_EXECUTABLE install -r requirements.txt
 
-            echo "Reloading systemd and restarting FastAPI service: $SERVICE_NAME"
-            # Ensure SERVICE_NAME matches the ExecStart in your systemd file (api:api)
-            # The SERVICE_NAME variable here is for systemctl restart <service_file_name>
-            sudo systemctl daemon-reload
-            sudo systemctl restart $SERVICE_NAME
-            sleep 3
-            sudo systemctl status $SERVICE_NAME --no-pager || echo "Service status check failed or service not fully up yet."
+              echo "Reloading systemd and restarting FastAPI service: $SERVICE_NAME"
+              sudo systemctl daemon-reload
+              sudo systemctl restart $SERVICE_NAME
+              sleep 3
+              sudo systemctl status $SERVICE_NAME --no-pager || echo "Service status check failed or service not fully up yet."
 
-            echo "Deployment successful!"
+              echo "Deployment successful!"
+
+    
