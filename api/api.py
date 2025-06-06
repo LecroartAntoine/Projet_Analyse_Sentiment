@@ -17,6 +17,8 @@ from opencensus.ext.azure.trace_exporter import AzureExporter
 from opencensus.trace.samplers import ProbabilitySampler
 from opencensus.trace.tracer import Tracer
 import uvicorn
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse, FileResponse
 
 CONNECTION_STRING = os.environ.get("APPLICATIONINSIGHTS_CONNECTION_STRING")
 
@@ -86,5 +88,12 @@ async def log_feedback(feedback: FeedbackInput):
         return {"message": "Merci ! L'erreur a été signalée pour analyse."}
     return {"message": "Merci pour votre retour !"}
   
-if __name__ == "__main__":
-  uvicorn.run("api:api", host="0.0.0.0", port=8080)
+
+api.mount("/static", StaticFiles(directory="./static"), name="static")
+
+@api.get("/blog", response_class=HTMLResponse)
+async def read_blog_article():
+    blog_file_path = os.path.join("./static", "article.html")
+    if os.path.exists(blog_file_path):
+        return FileResponse(blog_file_path)
+    return HTMLResponse(content="<h1>Article non trouvé</h1>", status_code=404)

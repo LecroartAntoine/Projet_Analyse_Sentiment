@@ -17,7 +17,7 @@
 
 - [APP Streamlit de test de l'API](./app/)
 
-- [Documentation](./Docs/)
+- [Article de Blog](./Blog/)
 
 ---
 
