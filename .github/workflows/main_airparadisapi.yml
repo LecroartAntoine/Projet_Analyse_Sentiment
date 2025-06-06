@@ -42,55 +42,31 @@ jobs:
           ssh-keyscan -H ${{ secrets.REMOTE_HOST }} >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
 
-      - name: Install rsync and debug
+      - name: Create deployment directory on server (if it doesn't exist)
         run: |
-          echo "Attempting to install rsync..."
-          sudo apt-get update -qq
-          sudo apt-get install -y rsync
-          echo "Finished attempting to install rsync."
-          echo "--- Checking rsync installation ---"
-          which rsync # <-- THIS LINE
-          rsync --version
-          echo "--- Checking PATH ---"
-          echo $PATH
-          echo "-------------------------------"
+          ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }} "mkdir -p /srv/my_fastapi_app"
 
-      - name: Sync application files (api/ folder) to server
-        shell: bash -e {0} # Ensures bash, exits on error
+      - name: Sync application files (api/ folder) to server using SCP
         run: |
-          echo "--- Environment for Sync Step ---"
-          echo "Current working directory: $(pwd)"
-          echo "User: $(whoami)"
-          echo "PATH: $PATH"
-          echo "--- Checking rsync again in THIS step ---"
-          which rsync
-          ls -l $(which rsync || echo "/dev/null") # List details if found, else /dev/null
-          /usr/bin/rsync --version || echo "/usr/bin/rsync --version failed"
-          echo "-------------------------------"
-          
-          echo "Attempting to rsync from ./api/ using /usr/bin/rsync"
-          /usr/bin/rsync -avz --delete \
-            --exclude='__pycache__/' \
-            --exclude='*.pyc' \
-            --exclude='venv/' \
-            ./api/ ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }}:/srv/airparadisapi/
-          echo "Rsync command completed."
+          echo "Copying contents of ./api/ to server..."
+          scp -r -o StrictHostKeyChecking=no ./api/* ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }}:/srv/my_fastapi_app/
+          echo "SCP command finished."
 
-      - name: Execute remote commands
-        uses: appleboy/ssh-action@v1.0.3 
+      - name: Execute remote commands (venv setup, install, restart service)
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.REMOTE_HOST }}
           username: ${{ secrets.REMOTE_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }} # Can be used directly by ssh-action
           port: 22
           script: |
             set -e # Exit immediately if a command exits with a non-zero status.
 
-            APP_DIR="/srv/airparadisapi"
+            APP_DIR="/srv/my_fastapi_app" # This is where SCP copied the files
             VENV_DIR="$APP_DIR/venv"
             PYTHON_EXECUTABLE="$VENV_DIR/bin/python"
             PIP_EXECUTABLE="$VENV_DIR/bin/pip"
-            SERVICE_NAME="airparadisapi" # Match your systemd service file name
+            SERVICE_NAME="my_fastapi_app" # Should match your systemd service filename (e.g., sentiment_api if you changed it)
 
             echo "Changing to app directory: $APP_DIR"
             cd $APP_DIR || { echo "Failed to cd to $APP_DIR"; exit 1; }
@@ -108,11 +84,13 @@ jobs:
             fi
 
             echo "Activating virtual environment and installing/updating dependencies"
-            # requirements.txt is now directly in $APP_DIR (synced from api/requirements.txt)
+            # requirements.txt is now directly in $APP_DIR (synced from local api/requirements.txt)
             $PIP_EXECUTABLE install --upgrade pip
             $PIP_EXECUTABLE install -r requirements.txt
 
             echo "Reloading systemd and restarting FastAPI service: $SERVICE_NAME"
+            # Ensure SERVICE_NAME matches the ExecStart in your systemd file (api:api)
+            # The SERVICE_NAME variable here is for systemctl restart <service_file_name>
             sudo systemctl daemon-reload
             sudo systemctl restart $SERVICE_NAME
             sleep 3
