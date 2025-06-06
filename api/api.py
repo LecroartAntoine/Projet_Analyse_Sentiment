@@ -60,7 +60,7 @@ async def predict_sentiment(tweet: TweetInput):
       estimated_prob = (1 - proba_pos*2) *100
       
     else :
-      estimated_prob =  ((proba_pos - 0.5) *2) *100
+      estimated_prob =  ((proba_pos - 0.5) *2) *100 
 
     return SentimentPrediction(sentiment=sentiment_label, probability=float(estimated_prob))
 
