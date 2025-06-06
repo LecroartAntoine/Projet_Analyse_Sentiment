@@ -57,13 +57,17 @@ jobs:
 
       - name: Sync application files (api/ folder) to server
         run: |
-          echo "PATH for this step: $PATH"
+          echo "Current working directory: $(pwd)"
+          echo "Listing contents of current directory:"
+          ls -la
+          echo "Checking specifically for ./api/ directory:"
+          ls -ld ./api/
           echo "Attempting to run rsync command using absolute path..."
-          /usr/bin/rsync -avz --delete \  # <-- USE THE ABSOLUTE PATH
+          /usr/bin/rsync -avz --delete \
             --exclude='__pycache__/' \
             --exclude='*.pyc' \
             --exclude='venv/' \
-            ./api/ ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }}:/srv/airparadisapi/
+            ./api/ ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }}:/srv/my_fastapi_app/
 
       - name: Execute remote commands
         uses: appleboy/ssh-action@v1.0.3 
