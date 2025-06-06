@@ -28,10 +28,8 @@ jobs:
       - name: Run tests
         env : 
           APPLICATIONINSIGHTS_CONNECTION_STRING : ${{ secrets.APPLICATIONINSIGHTS_CONNECTION_STRING }}
+        working-directory: ./api
         run: pytest
-        # If your tests need to be run from within the api/ directory:
-        # working-directory: ./api
-        # run: pytest
 
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.0
@@ -52,8 +50,7 @@ jobs:
             --exclude='__pycache__/' \
             --exclude='*.pyc' \
             --exclude='venv/' \
-            ./api/ ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }}:/srv/my_fastapi_app/
-        # This copies files like api/main.py to /srv/my_fastapi_app/main.py
+            ./api/ ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }}:/srv/airparadisapi/
 
       - name: Execute remote commands
         uses: appleboy/ssh-action@v1.0.3 # Using a specific version
@@ -65,11 +62,11 @@ jobs:
           script: |
             set -e # Exit immediately if a command exits with a non-zero status.
 
-            APP_DIR="/srv/my_fastapi_app"
+            APP_DIR="/srv/airparadisapi"
             VENV_DIR="$APP_DIR/venv"
             PYTHON_EXECUTABLE="$VENV_DIR/bin/python"
             PIP_EXECUTABLE="$VENV_DIR/bin/pip"
-            SERVICE_NAME="my_fastapi_app" # Match your systemd service file name
+            SERVICE_NAME="airparadisapi" # Match your systemd service file name
 
             echo "Changing to app directory: $APP_DIR"
             cd $APP_DIR || { echo "Failed to cd to $APP_DIR"; exit 1; }
