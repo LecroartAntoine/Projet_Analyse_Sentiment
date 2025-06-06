@@ -1,4 +1,4 @@
-name: Deploy FastAPI App
+name: Deploy FastAPI App (from API folder)
 
 on:
   push:
@@ -20,49 +20,47 @@ jobs:
       - name: Install dependencies (for tests on runner)
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          # Ensure pytest is installed if you run tests this way
-          # pip install pytest  # Or include it in a dev-requirements.txt
+          # Install requirements from the api/ directory
+          pip install -r api/requirements.txt
+          # Ensure pytest is installed if not in api/requirements.txt
+          # pip install pytest # Or include it in a dev-requirements.txt
 
       - name: Run tests
-        run: pytest # Make sure pytest is available
+        # If your tests are inside api/ and can be run from the repo root:
+        run: pytest
+        # If your tests need to be run from within the api/ directory:
+        # working-directory: ./api
+        # run: pytest
 
       - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.9.0 # More robust for multiple SSH commands
+        uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: Add remote host to known_hosts
-        # Important for non-interactive SSH sessions
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan -H ${{ secrets.REMOTE_HOST }} >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
 
-      - name: Sync application files to server
-        # This uses rsync for efficient file transfer.
-        # It excludes .git, .github, and any local venv.
-        # Ensure `rsync` is installed on the runner (it usually is on ubuntu-latest)
-        # and on the server (sudo apt install rsync).
+      - name: Sync application files (api/ folder) to server
+        # This uses rsync to efficiently copy the *contents* of the ./api/ folder.
+        # The trailing slash on ./api/ is important.
         run: |
           rsync -avz --delete \
-            --exclude='.git*' \
-            --exclude='.github*' \
-            --exclude='venv/' \
             --exclude='__pycache__/' \
             --exclude='*.pyc' \
-            ./ ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }}:/srv/my_fastapi_app/
-        # The trailing slash on source and destination is important for rsync's behavior.
+            --exclude='venv/' \
+            ./api/ ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }}:/srv/my_fastapi_app/
+        # This copies files like api/main.py to /srv/my_fastapi_app/main.py
 
       - name: Execute remote commands
-        uses: appleboy/ssh-action@v1.0.3 # Check for latest version
+        uses: appleboy/ssh-action@v1.0.3 # Using a specific version
         with:
           host: ${{ secrets.REMOTE_HOST }}
           username: ${{ secrets.REMOTE_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }} # This action can also use the key directly
-          # Or, if using ssh-agent, it should pick it up automatically.
-          # You might not need to specify 'key' here if webfactory/ssh-agent is working.
-          port: 22 # Default, change if your SSH port is different
+          key: ${{ secrets.SSH_PRIVATE_KEY }} # Can be used directly by ssh-action
+          port: 22
           script: |
             set -e # Exit immediately if a command exits with a non-zero status.
 
@@ -76,10 +74,8 @@ jobs:
             cd $APP_DIR || { echo "Failed to cd to $APP_DIR"; exit 1; }
 
             echo "Creating/Updating .env file from GitHub Secret"
-            # Ensure the secret DOT_ENV_CONTENT is properly quoted if it contains special characters
-            # Using printf for safer handling of multi-line content
             printf "%s\n" "${{ secrets.DOT_ENV_CONTENT }}" > .env
-            chmod 600 .env # Restrict permissions
+            chmod 600 .env
 
             echo "Setting up/updating Python virtual environment in $VENV_DIR"
             if [ ! -d "$VENV_DIR" ]; then
@@ -90,18 +86,14 @@ jobs:
             fi
 
             echo "Activating virtual environment and installing/updating dependencies"
-            # Using absolute paths to pip and python from the venv
+            # requirements.txt is now directly in $APP_DIR (synced from api/requirements.txt)
             $PIP_EXECUTABLE install --upgrade pip
             $PIP_EXECUTABLE install -r requirements.txt
-
-            echo "Ensuring ownership and permissions (optional, if needed)"
-            # sudo chown -R ${{ secrets.REMOTE_USER }}:${{ secrets.REMOTE_USER }} $APP_DIR # If files were copied as root or need adjustment
 
             echo "Reloading systemd and restarting FastAPI service: $SERVICE_NAME"
             sudo systemctl daemon-reload
             sudo systemctl restart $SERVICE_NAME
-            # Give it a moment to start, then check status
-            sleep 3 
+            sleep 3
             sudo systemctl status $SERVICE_NAME --no-pager || echo "Service status check failed or service not fully up yet."
 
             echo "Deployment successful!"
