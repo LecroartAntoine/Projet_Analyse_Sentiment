@@ -66,7 +66,7 @@ async def predict_sentiment(tweet: TweetInput):
 
 @api.get("/")
 async def root():
-    return {"message": "API de prédiction de sentiment pour Air Paradis"}
+    return {"message": "Bienvenue sur l'API de prédiction de sentiment pour Air Paradis"}
   
 class FeedbackInput(BaseModel):
     tweet_text: str

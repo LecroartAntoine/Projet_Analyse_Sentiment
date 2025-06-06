@@ -2,8 +2,8 @@ import streamlit as st
 import requests # Pour appeler votre API déployée
 # import time # Not used, can be removed
 
-API_URL = "http://localhost:8000/predict"
-FEEDBACK_URL = "http://localhost:8000/feedback"
+API_URL = "http://cityhand.fr:8000//predict"
+FEEDBACK_URL = "http://cityhand.fr:8000//feedback"
 
 st.title("Testeur de Sentiment Air Paradis")
 
