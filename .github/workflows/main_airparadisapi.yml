@@ -3,7 +3,7 @@ name: Deploy FastAPI App (from API folder)
 on:
   push:
     branches:
-      - main  # Or your deployment branch
+      - main  
 
 jobs:
   deploy:
@@ -15,7 +15,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10' # Match your server's Python or app requirement
+          python-version: '3.10' 
 
       - name: Install dependencies (for tests on runner)
         run: |
@@ -42,9 +42,10 @@ jobs:
           ssh-keyscan -H ${{ secrets.REMOTE_HOST }} >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
 
+      - name: Install rsync
+        run: sudo apt-get update && sudo apt-get install -y rsync
+
       - name: Sync application files (api/ folder) to server
-        # This uses rsync to efficiently copy the *contents* of the ./api/ folder.
-        # The trailing slash on ./api/ is important.
         run: |
           rsync -avz --delete \
             --exclude='__pycache__/' \
@@ -53,11 +54,11 @@ jobs:
             ./api/ ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }}:/srv/airparadisapi/
 
       - name: Execute remote commands
-        uses: appleboy/ssh-action@v1.0.3 # Using a specific version
+        uses: appleboy/ssh-action@v1.0.3 
         with:
           host: ${{ secrets.REMOTE_HOST }}
           username: ${{ secrets.REMOTE_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }} # Can be used directly by ssh-action
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           script: |
             set -e # Exit immediately if a command exits with a non-zero status.
