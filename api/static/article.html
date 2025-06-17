@@ -1,10 +1,9 @@
-      
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>De l'Idée à la Production : Comment le MLOps Révolutionne l'Analyse de Sentiments pour Air Paradis</title>
+    <title>Analyse de Sentiments de Tweets : Approches de Modélisation et Implémentation MLOps</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -23,38 +22,41 @@
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
         header {
-            background: #35424a;
+            background: #2c3e50; /* Couleur plus neutre */
             color: #ffffff;
             padding-top: 30px;
             min-height: 70px;
-            border-bottom: #e8491d 3px solid;
+            border-bottom: #3498db 3px solid; /* Couleur plus neutre */
             text-align: center;
         }
         header h1 {
             margin: 0;
-            font-size: 2.5em;
+            font-size: 2.2em;
         }
         article h2 {
-            color: #35424a;
-            border-bottom: 2px solid #e8491d;
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
             padding-bottom: 5px;
+            margin-top: 30px;
         }
         article h3 {
-            color: #35424a;
+            color: #2c3e50;
+            margin-top: 25px;
         }
         .screenshot {
             display: block;
-            max-width: 100%;
+            max-width: 90%; /* Un peu moins large pour mieux s'intégrer */
             height: auto;
             margin: 20px auto;
             border: 1px solid #ddd;
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+            box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
         }
         figcaption {
             text-align: center;
             font-style: italic;
-            color: #666;
+            color: #555; /* Un peu plus foncé */
             margin-bottom: 15px;
+            font-size: 0.9em;
         }
         table {
             width: 100%;
@@ -63,320 +65,263 @@
         }
         th, td {
             border: 1px solid #ddd;
-            padding: 8px;
+            padding: 10px; /* Un peu plus d'espace */
             text-align: left;
         }
         th {
-            background-color: #f2f2f2;
+            background-color: #ecf0f1; /* Couleur plus neutre */
+            font-weight: bold;
         }
         .code-snippet {
-            background-color: #eee;
-            border-left: 3px solid #e8491d;
-            padding: 10px;
-            margin: 10px 0;
-            font-family: monospace;
+            background-color: #f9f9f9; /* Fond plus clair */
+            border: 1px solid #e0e0e0; /* Bordure plus discrète */
+            border-left: 3px solid #3498db;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: "Courier New", Courier, monospace;
+            font-size: 0.95em;
             overflow-x: auto;
-            white-space: pre-wrap; /* Pour gérer les retours à la ligne */
-            word-wrap: break-word; /* Pour les très longues lignes sans espaces */
+            white-space: pre-wrap;
+            word-wrap: break-word;
         }
         footer {
             text-align: center;
-            padding: 20px;
-            margin-top: 20px;
-            color: #ffffff;
-            background: #35424a;
+            padding: 15px;
+            margin-top: 30px;
+            color: #7f8c8d; /* Gris plus clair */
+            background: #ecf0f1;
+            font-size: 0.9em;
+        }
+        .introduction, .conclusion {
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-left: 3px solid #3498db;
+            margin-bottom: 20px;
         }
     </style>
 </head>
 <body>
     <header>
-        <h1>De l'Idée à la Production : Comment le MLOps Révolutionne l'Analyse de Sentiments pour Air Paradis</h1>
+        <h1>Analyse de Sentiments de Tweets : Approches de Modélisation et Implémentation MLOps</h1>
     </header>
 
     <div class="container">
         <article>
-            <p><em>Date de publication : <!-- DATE_DE_PUBLICATION --></em></p>
-            <p><em>Par : <!-- VOTRE_NOM -->, Ingénieur IA chez MIC (Marketing Intelligence Consulting)</em></p>
+            <p><em>Auteur : LECROART Antoine</em></p>
 
-            <h2>Introduction : Garder une Oreille Attentive sur les Réseaux Sociaux</h2>
+            <div class="introduction">
+                <p>
+                    Ce document détaille le développement d'un système d'analyse de sentiments pour des tweets, en explorant différentes approches de modélisation, 
+                    de la régression logistique aux réseaux de neurones profonds, y compris l'utilisation de BERT. 
+                    Une attention particulière est portée à l'implémentation d'une démarche MLOps pour assurer la reproductibilité, le suivi des expérimentations, 
+                    le déploiement continu et le monitoring en production du modèle sélectionné. L'objectif était de créer un prototype fonctionnel et 
+                    de mettre en place les fondations pour une solution d'IA robuste et évolutive.
+                </p>
+            </div>
+
+            <h2>1. Contexte et Données</h2>
             <p>
-                À l'ère du digital, la réputation en ligne est un actif inestimable, particulièrement pour les entreprises du secteur du voyage comme les compagnies aériennes. Un simple tweet peut se transformer en une vague de réactions, positives ou négatives, impactant directement l'image de marque. La compagnie aérienne "Air Paradis", consciente de ces enjeux, a souhaité se doter d'un outil pour anticiper et mieux gérer les "bad buzz" potentiels sur les réseaux sociaux.
-            </p>
-            <p>
-                Chez MIC, nous avons relevé ce défi en développant un prototype de produit IA capable de prédire le sentiment associé à un tweet. Mais au-delà de la simple modélisation, notre mission était double : tester différentes approches de Deep Learning et, surtout, mettre en œuvre une démarche MLOps robuste. Cet article vous emmène dans les coulisses de ce projet, de l'exploration des données à la mise en production d'une solution fiable et évolutive.
+                Le projet vise à prédire le sentiment (négatif ou positif) exprimé dans des tweets. 
+                Un jeu de données public <a href="https://www.kaggle.com/datasets/kazanova/sentiment140">(source)</a> a été utilisé. 
+                Ce dataset inclut l'heure, l'auteur (id et username), le contenu du tweet et le sentiment associé.
+                Une première phase de prétraitement à réduit ce dataset aux deux colonnes qui nous intéresses : le tweet et le sentiment.
             </p>
 
-            <h2>Le Voyage de la Modélisation : Explorer les Sentiments des Voyageurs</h2>
-            <p>Pour prédire avec précision le sentiment exprimé dans un tweet, il est crucial de choisir la bonne approche de modélisation. Nous avons exploré plusieurs pistes, allant des modèles classiques aux architectures de réseaux de neurones profonds les plus récentes.</p>
+            <h2>2. Exploration des Modèles d'Analyse de Sentiments</h2>
+            <p>Trois principales approches de modélisation ont été évaluées :</p>
 
-            <h3>Les Données : La Voix des Clients</h3>
+            <h3>2.1. Modèle de Référence : Régression Logistique</h3>
             <p>
-                Air Paradis ne disposant pas de données internes pour ce type de projet, nous nous sommes tournés vers un <a href="<!-- LIEN_VERS_LES_DONNÉES SI APPLICABLE -->" target="_blank">jeu de données Open Source</a>. Celui-ci contient des milliers de tweets relatifs aux compagnies aériennes, chacun étant étiqueté comme exprimant un sentiment négatif ou non (positif/neutre). Ces données ont été soigneusement prétraitées pour nettoyer le texte (suppression des mentions, hashtags non pertinents, URLs) et le préparer pour nos modèles.
-            </p>
-
-            <h3>Approche 1 : "Modèle sur Mesure Simple" – Les Fondations avec la Régression Logistique</h3>
-            <p>
-                Pour établir une première base de référence, nous avons commencé par un modèle classique : la régression logistique. Cette approche, bien que simple, est souvent étonnamment efficace pour les tâches de classification de texte.
+                Un modèle de régression logistique a été implémenté comme baseline. Les tweets ont été vectorisés en utilisant une représentation TF-IDF (Term Frequency-Inverse Document Frequency).
+                Un test préliminaire à permis d'évaluer que les résultats étaient meilleurs sans prétraitement des données.
             </p>
             <p>
-                <strong>Méthodologie :</strong> Les tweets ont été transformés en vecteurs numériques grâce à la technique TF-IDF (Term Frequency-Inverse Document Frequency), qui donne plus de poids aux mots importants et rares. Un modèle de régression logistique a ensuite été entraîné sur ces vecteurs.
-            </p>
-            <p>
-                <strong>Résultats :</strong> Ce modèle a atteint une F1-score de <code><!-- RÉSULTAT_F1_LOGREG --></code> et une accuracy de <code><!-- RÉSULTAT_ACCURACY_LOGREG --></code>.
-            </p>
-            <figure>
-                <img src="./static/img/mlflow_simple.png" alt="Résultats MLflow Régression Logistique" class="screenshot">
-                <figcaption>Figure 1 : Suivi des performances de la Régression Logistique avec MLflow.</figcaption>
-            </figure>
-
-            <h3>Approche 2 : "Modèle sur Mesure Avancé" – La Puissance du Deep Learning</h3>
-            <p>
-                Pour capturer des nuances plus subtiles et des relations complexes dans le langage, nous nous sommes tournés vers les réseaux de neurones profonds, en particulier les réseaux de neurones récurrents (RNN) de type LSTM (Long Short-Term Memory).
-            </p>
-            <p>
-                <strong>Word Embeddings : Donner du Sens aux Mots :</strong> Au lieu de TF-IDF, nous avons utilisé des "word embeddings". Imaginez que chaque mot soit représenté par un point dans un espace multidimensionnel, où les mots ayant des significations similaires sont proches les uns des autres. Nous avons testé deux types d'embeddings pré-entraînés :
+                <strong>Paramètres clés et résultats :</strong>
                 <ul>
-                    <li><strong>Word2Vec :</strong> Apprend les représentations des mots en analysant leur contexte dans de grands corpus de texte.</li>
-                    <li><strong>GloVe (Global Vectors for Word Representation) :</strong> Construit ses embeddings en se basant sur les cooccurrences globales de mots dans un corpus.</li>
+                    <li>Vectorizer : TF-IDF (<code>ngram_range=(1, 3)</code>, <code>max_features=10000</code>)</li>
+                    <li>Modèle : LogisticRegression (<code>solver='saga'</code>, <code>C=0.5</code, >, <code>max iter=500</code>, <code>class weight=balanced</code>)</li>
+                    <li>Performance (Test) : F1-score = <code>0.80</code>, Accuracy = <code>0.80</code>.</li>
                 </ul>
-                Après expérimentation, les embeddings <code><!-- NOM_EMBEDDING_CHOISI_AVANCE (ex: GloVe) --></code> ont offert les meilleures performances pour notre tâche.
-            </p>
-            <p>
-                <strong>Architecture du Réseau :</strong> Notre modèle avancé consistait en une couche d'embedding, suivie d'une ou plusieurs couches LSTM pour traiter la séquence de mots, et enfin une couche Dense avec une activation sigmoïde pour la classification binaire (négatif/non-négatif).
             </p>
             <figure>
-                <!-- OPTIONNEL : Schéma simple de l'architecture LSTM -->
-                <!-- <img src="<!-- CHEMIN_VERS_IMAGE_ARCHITECTURE_LSTM.png -->" alt="Architecture du modèle LSTM" class="screenshot"> -->
-                <!-- <figcaption>Figure 2 : Architecture simplifiée de notre modèle LSTM.</figcaption> -->
-            </figure>
-            <p>
-                <strong>Résultats :</strong> Ce modèle a significativement amélioré les performances, atteignant un F1-score de <code><!-- RÉSULTAT_F1_AVANCE --></code> et une accuracy de <code><!-- RÉSULTAT_ACCURACY_AVANCE --></code>. C'est ce modèle qui a été retenu pour le déploiement.
-            </p>
-            <figure>
-                <img src="./static/img/mlflow_advanced.png" alt="Résultats MLflow Modèle Avancé" class="screenshot">
-                <figcaption>Figure 2 : Suivi des performances du modèle avancé avec MLflow.</figcaption>
+                <img src="img/mlflow_simple.png" alt="Métriques MLflow pour la Régression Logistique" class="screenshot">
+                <figcaption>Figure 1 : Suivi des métriques de la Régression Logistique via MLflow.</figcaption>
             </figure>
 
-            <h3>Approche 3 : "Modèle Avancé BERT" – Toucher l'État de l'Art</h3>
+            <h3>2.2. Modèle Avancé : Réseau de Neurones Récurrents (LSTM)</h3>
             <p>
-                Pour pousser l'exploration plus loin, nous avons également testé BERT (Bidirectional Encoder Representations from Transformers), un modèle de langage pré-entraîné par Google, réputé pour ses performances exceptionnelles sur de nombreuses tâches de traitement du langage naturel.
+                Pour une meilleure capture des dépendances séquentielles et du contexte, un modèle basé sur des couches LSTM (Long Short-Term Memory) a été développé.
+                Un test préliminaire à permis d'évaluer que les résultats étaient meilleurs avec prétraitement des données 
+                (suppression des URLs, mentions, caractères spéciaux, lemmatization, decontraction,  ect...) mais sans suppression des stop words.
             </p>
             <p>
-                <strong>Méthodologie :</strong> Nous avons utilisé une version pré-entraînée de BERT et l'avons "fine-tunée" sur notre dataset de tweets. Cela signifie que nous avons adapté les poids du modèle déjà très performant à notre tâche spécifique d'analyse de sentiments.
+                <strong>Embeddings de Mots :</strong> Deux types d'embeddings ont été testés : GloVe et embeddings vierges. 
+                Les embeddings GloVe (<code>GloVe.6B.300d</code>) ont fourni les meilleurs résultats préliminaires et ont été retenus. 
+                Le vocabulaire a été limité aux <code>300</code> mots les plus fréquents et les séquences paddées/tronquées à une longueur de <code>20</code>.
             </p>
             <p>
-                <strong>Résultats :</strong> BERT a confirmé son potentiel avec un F1-score de <code><!-- RÉSULTAT_F1_BERT --></code> et une accuracy de <code><!-- RÉSULTAT_ACCURACY_BERT --></code>. Bien que très performant, son poids et sa complexité de déploiement l'ont rendu moins prioritaire pour ce prototype initial par rapport au modèle LSTM personnalisé.
+                
+                <figure>
+                    <img src="img/advanced_architecture.png" alt="Architecture du modèle LSTM" class="screenshot">
+                <figcaption>Figure 2 : Architecture simplifié du modèle LSTM.</figcaption>
+            </figure>
+            </p>
+            <p>
+                <strong>Performance (Test) :</strong> F1-score = <code>0.76</code>, Accuracy = <code>0.76</code>.
             </p>
             <figure>
-                <img src="./static/img/mlflow_bert.png" alt="Résultats MLflow Modèle BERT" class="screenshot">
-                <figcaption>Figure 3 : Suivi des performances du modèle BERT avec MLflow.</figcaption>
+                <img src="img/mlflow_advanced.png" alt="Métriques MLflow pour le modèle LSTM" class="screenshot">
+                <figcaption>Figure 2 : Suivi des métriques du modèle LSTM via MLflow.</figcaption>
             </figure>
 
-            <h3>Comparaison des Modèles : Vers le Meilleur Compromis</h3>
+            <h3>2.3. Modèle Basé sur Transformers : BERT</h3>
             <p>
-                Le tableau ci-dessous résume les performances des différentes approches testées :
+                Une approche utilisant BERT (Bidirectional Encoder Representations from Transformers), spécifiquement <code>bert-base-uncased</code>, a été explorée. Le modèle pré-entraîné a été fine-tuné sur le dataset de tweets.
             </p>
+            <p>
+                <strong>Performance (Test) :</strong> F1-score = <code>0.74</code>, Accuracy = <code>0.74</code>.
+            </p>
+            <figure>
+                <img src="img/mlflow_bert.png" alt="Métriques MLflow pour le modèle BERT" class="screenshot">
+                <figcaption>Figure 3 : Suivi des métriques du modèle BERT fine-tuné via MLflow.</figcaption>
+            </figure>
+
+            <h3>2.4. Synthèse des Performances</h3>
             <table>
                 <thead>
                     <tr>
                         <th>Modèle</th>
-                        <th>F1-score (Test)</th>
-                        <th>Accuracy (Test)</th>
-                        <th>Complexité / Temps d'inférence</th>
+                        <th>F1-score (Ensemble de Test)</th>
+                        <th>Accuracy (Ensemble de Test)</th>
+                        <th>Principaux Paramètres / Complexité</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td>Régression Logistique (TF-IDF)</td>
-                        <td><code><!-- RÉSULTAT_F1_LOGREG --></code></td>
-                        <td><code><!-- RÉSULTAT_ACCURACY_LOGREG --></code></td>
-                        <td>Faible</td>
+                        <td>Régression Logistique</td>
+                        <td><code>0.80</code></td>
+                        <td><code>0.80</code></td>
+                        <td>TF-IDF, faible complexité</td>
                     </tr>
                     <tr>
-                        <td>Modèle Avancé (LSTM + <code><!-- NOM_EMBEDDING_CHOISI_AVANCE --></code>)</td>
-                        <td><code><!-- RÉSULTAT_F1_AVANCE --></code></td>
-                        <td><code><!-- RÉSULTAT_ACCURACY_AVANCE --></code></td>
-                        <td>Moyenne</td>
+                        <td>LSTM + <code>GloVe</code></td>
+                        <td><code>0.76</code></td>
+                        <td><code>0.76</code></td>
+                        <td>Embeddings pré-entraînés GloVe, complexité moyenne</td>
                     </tr>
                     <tr>
-                        <td>Modèle BERT (Fine-tuned)</td>
-                        <td><code><!-- RÉSULTAT_F1_BERT --></code></td>
-                        <td><code><!-- RÉSULTAT_ACCURACY_BERT --></code></td>
-                        <td>Élevée</td>
+                        <td>BERT (<code>bert-base-uncased</code>)</td>
+                        <td><code>0.74</code></td>
+                        <td><code>0.74</code></td>
+                        <td>Transformers, haute complexité</td>
                     </tr>
                 </tbody>
             </table>
+
+            <h2>3. Implémentation de la Démarche MLOps</h2>
             <p>
-                Le "Modèle sur Mesure Avancé" (LSTM) a offert le meilleur équilibre entre performance, complexité et rapidité d'inférence pour les besoins de ce prototype. Il a donc été sélectionné pour la phase de déploiement.
+                Une démarche MLOps a été mise en œuvre pour structurer le cycle de vie du modèle, de l'expérimentation au monitoring.
             </p>
 
-            <h2>MLOps : L'Art d'Industrialiser l'Intelligence Artificielle</h2>
+            <h3>3.1. Suivi des Expérimentations avec MLflow</h3>
             <p>
-                Développer un bon modèle est une chose, mais le rendre opérationnel, fiable et maintenable en est une autre. C'est là qu intervient le MLOps (Machine Learning Operations).
-            </p>
-            <h3>Qu'est-ce que le MLOps ?</h3>
-            <p>
-                Le MLOps est un ensemble de pratiques qui vise à déployer et maintenir des modèles de Machine Learning en production de manière fiable et efficace. Il s'inspire largement des principes du DevOps (collaboration entre équipes de développement et d'opérations) et les adapte aux spécificités du cycle de vie des modèles d'IA : expérimentation, entraînement, déploiement, monitoring et ré-entraînement. Les piliers du MLOps incluent l'automatisation, la reproductibilité, le versioning (des données, du code, des modèles), le monitoring continu et la collaboration.
+                MLflow a été utilisé pour tracker les paramètres, les métriques (accuracy, F1-score, loss), les artefacts (modèles sauvegardés, graphiques) et le code source de chaque exécution d'entraînement. Cela permet une comparaison rigoureuse des modèles et la reproductibilité des résultats.
             </p>
             <figure>
-                <img src="<!-- CHEMIN_VERS_IMAGE_SCHEMA_MLOPS.png -->" alt="Cycle de vie MLOps" class="screenshot">
-                <figcaption>Figure 4 : Un cycle de vie MLOps typique.</figcaption>
+                <img src="img/tracking_mlflow.png" alt="Interface MLflow pour la comparaison des runs" class="screenshot">
+                <figcaption>Figure 4 : Interface MLflow montrant la comparaison de plusieurs exécutions d'entraînement.</figcaption>
             </figure>
+            <p>Les modèles finaux ont été enregistrés dans le registre de modèles MLflow pour une meilleure gestion des versions.</p>
 
-            <h3>Notre Démarche MLOps en Action pour Air Paradis</h3>
-            <p>Pour ce projet, nous avons mis en œuvre plusieurs composantes clés d'une démarche MLOps :</p>
-
-            <h4>1. Suivi des Expérimentations avec MLflow</h4>
+            <h3>3.2. Versioning du Code avec Git et GitHub</h3>
             <p>
-                Lors de la phase de modélisation, il est crucial de garder une trace de chaque expérience : quels hyperparamètres ont été utilisés ? Quelles étaient les performances ? Quel code a généré ce modèle ? MLflow est un outil open-source qui excelle dans cette tâche.
-            </p>
-            <p>
-                Nous avons utilisé MLflow pour :
-                <ul>
-                    <li><strong>Logger les paramètres</strong> de chaque entraînement (ex: taux d'apprentissage, nombre d'époques).</li>
-                    <li><strong>Enregistrer les métriques</strong> de performance (accuracy, F1-score, loss).</li>
-                    <li><strong>Stocker les modèles entraînés</strong> (artefacts) et leurs versions.</li>
-                    <li><strong>Comparer visuellement les runs</strong> pour identifier les meilleures configurations.</li>
-                </ul>
+                L'ensemble du code source (notebooks Jupyter pour l'exploration et l'entraînement, scripts Python pour l'API et les tests) est versionné avec Git et hébergé sur un dépôt GitHub. La structure du projet est organisée pour séparer la logique de modélisation, le code de l'application API et les tests.
             </p>
             <figure>
-                <img src="<!-- CHEMIN_VERS_IMAGE_MLFLOW_UI_COMPARAISON_RUNS.png -->" alt="Comparaison de runs dans l'UI MLflow" class="screenshot">
-                <figcaption>Figure 5 : L'interface utilisateur de MLflow permet de comparer facilement les résultats des différentes expérimentations.</figcaption>
+                <img src="img/structure_projet.png" alt="Structure du projet sur GitHub" class="screenshot">
+                <figcaption>Figure 5 : Organisation des dossiers du projet sur GitHub.</figcaption>
             </figure>
 
-            <h4>2. Gestion des Versions et Collaboration avec Git/GitHub</h4>
+            <h3>3.3. Tests Unitaires pour l'API</h3>
             <p>
-                Tout le code du projet (notebooks d'exploration, scripts d'entraînement, code de l'API, tests) a été versionné avec Git et hébergé sur GitHub. Cela garantit :
-                <ul>
-                    <li><strong>Reproductibilité :</strong> Capacité à revenir à n'importe quelle version antérieure du code.</li>
-                    <li><strong>Collaboration :</strong> Facilite le travail en équipe (même si j'étais seul sur cette partie, c'est une bonne pratique).</li>
-                    <li><strong>Traçabilité :</strong> Historique clair des modifications.</li>
-                </ul>
+                Des tests unitaires ont été écrits avec `pytest` et `TestClient` de FastAPI pour valider le comportement de l'API de prédiction. Ces tests couvrent les réponses attendues pour des entrées valides et la gestion des cas limites.
             </p>
-            <figure>
-                <img src="<!-- CHEMIN_VERS_IMAGE_GITHUB_COMMITS.png -->" alt="Historique des commits sur GitHub" class="screenshot">
-                <figcaption>Figure 6 : Exemple de l'historique des commits sur notre dépôt GitHub.</figcaption>
-            </figure>
-
-            <h4>3. Tests Unitaires Automatisés : Garantir la Qualité de l'API</h4>
-            <p>
-                Avant de déployer notre modèle via une API, nous avons écrit des tests unitaires (avec `pytest` et `FastAPI TestClient`) pour vérifier le comportement de chaque endpoint. Ces tests s'assurent, par exemple, que l'API renvoie une prédiction dans le format attendu pour une entrée donnée.
-            </p>
-            <div class="code-snippet">
-                <pre><code>
-# Exemple de test unitaire (app/tests/test_api.py)
-from fastapi.testclient import TestClient
-from api import api
-
-client = TestClient(api)
-
+            <div class="code-snippet"><pre><code>
+# Extrait de api/test_main.py
+# Teste la prédiction de sentiment positif.
 def test_predict_positive_sentiment():
     response = client.post("/predict", json={"text": "I love this company ! the service was excellent !!!"})
     assert response.status_code == 200
     data = response.json()
     assert "sentiment" in data
-    assert data["sentiment"] == "positif" 
-                </code></pre>
+    assert data["sentiment"] == "positif"
+            </code></pre></div>
+
+            <h3>3.4. Pipeline de Déploiement Continu (CI/CD)</h3>
+            <p>
+                Un pipeline CI/CD a été configuré avec GitHub Actions. À chaque `push` sur la branche `main` :
+                <ol>
+                        <li>Push sur la branche main : C'est l'événement qui déclenche l'ensemble du processus.</li>
+                        <li>Job: Deploy : Le conteneur principal qui exécute toutes les étapes sur une machine virtuelle (runner) Ubuntu.</li>
+                        <li>Préparation de l'environnement : Cette boîte regroupe les premières étapes qui se déroulent sur le runner de GitHub Actions : récupération du code, configuration de Python et installation des dépendances nécessaires pour les tests.</li>
+                        <li>Exécution des tests : Une étape cruciale de validation. Si les tests (pytest) échouent, le pipeline s'arrête ici.</li>
+                        <li>Synchronisation avec le serveur : Si les tests réussissent, le pipeline configure la connexion SSH et copie les fichiers de l'application (le contenu du dossier api/) vers votre serveur de production via scp.</li>
+                        <li>
+                            Déploiement sur le serveur : C'est le cœur du déploiement. Une fois les fichiers sur le serveur, une série de commandes sont exécutées à distance pour :
+                            <ol>
+                                <li>Créer le fichier d'environnement .env à partir des secrets GitHub.</li>
+                                <li>Créer ou recréer un environnement virtuel Python (venv) propre.</li>           
+                                <li>Installer les dépendances de l'application dans ce venv.</li>       
+                                <li>Redémarrer le service (systemd) pour que la nouvelle version de l'application soit en ligne.</li>                        
+                            </ol>
+                        </li>
+                        <li>Déploiement terminé : Le point final, indiquant que le processus a réussi.</li> 
+                </ol>
+            </p>
+            <figure>
+                <img src="img/cicd.png" alt="Workflow GitHub Actions pour le CI/CD" class="screenshot">
+                <figcaption>Figure 6 : Visualisation du workflow CI/CD dans GitHub Actions.</figcaption>
+            </figure>
+
+            <h3>3.5. Exposition du Modèle via une API</h3>
+            <p>
+                Le modèle LSTM sélectionné est exposé via une API RESTful développée avec FastAPI. L'API prend en entrée un texte de tweet et retourne la prédiction de sentiment ainsi que la probabilité associée. Le chargement du modèle et du tokenizer est géré au démarrage de l'application.
+            </p>
+
+            <h3>3.6. Monitoring en Production et Collecte de Feedback</h3>
+            <p>
+                Le suivi du modèle en production est initié via Azure Application Insights.
+                <ul>
+                    <li><strong>Collecte de feedback utilisateur :</strong> Une interface locale (Streamlit) permet aux utilisateurs de tester l'API et de signaler les prédictions incorrectes. Ces signalements (texte du tweet, prédiction du modèle) sont envoyés comme traces (logs personnalisés) à Application Insights.</li>
+                    <li><strong>Alertes :</strong> Une règle d'alerte est configurée dans Application Insights pour notifier l'équipe si le nombre de prédictions incorrectes signalées dépasse un certain seuil sur une période donnée (ex: >3 erreurs en 5 minutes).</li>
+                </ul>
+            </p>
+            <figure>
+                <img src="img/alerte_azure.png" alt="Ressource d'alerte pour les feedbacks dans Application Insights" class="screenshot">
+                <figcaption>Figure 7 : Ressource d'alerte pour analyser les feedbacks dans Application Insights.</figcaption>
+            </figure>
+            <figure>
+                <img src="img/mail.png" alt="Ressource d'alerte pour les feedbacks dans Application Insights" class="screenshot">
+                <figcaption>Figure 7 : Ressource d'alerte pour analyser les feedbacks dans Application Insights.</figcaption>
+            </figure>
+            <p>
+                Cette infrastructure de monitoring est la première étape vers un système d'amélioration continue, où les erreurs identifiées peuvent être utilisées pour affiner et ré-entraîner le modèle.
+            </p>
+
+            <div class="conclusion">
+                <h2>4. Conclusion et Perspectives</h2>
+                <p>
+                    Ce projet a permis de développer et d'évaluer plusieurs approches pour l'analyse de sentiments de tweets, aboutissant au déploiement d'un modèle LSTM via une API robuste. L'implémentation d'une démarche MLOps, incluant le suivi avec MLflow, le versioning avec Git, l'automatisation CI/CD avec GitHub Actions, et l'initialisation du monitoring avec Azure Application Insights, constitue une base solide pour des développements futurs.
+                </p>
+                <p>
+                    Les prochaines étapes pourraient inclure l'enrichissement du dataset avec les feedbacks collectés, l'exploration de techniques de détection de dérive du modèle (model drift), et l'automatisation plus poussée du cycle de ré-entraînement. La comparaison continue avec des modèles plus complexes comme BERT, en tenant compte des contraintes de production, reste également une piste d'amélioration.
+                </p>
             </div>
-            <p>Ces tests sont exécutés automatiquement à chaque modification du code (voir CI/CD).</p>
-
-            <h4>4. Déploiement Continu (CI/CD) : De Git au Cloud en Quelques Clics</h4>
-            <p>
-                L'automatisation du déploiement est un pilier du MLOps. Nous avons mis en place un pipeline de Déploiement Continu et d'Intégration Continue (CI/CD) avec GitHub Actions.
-            </p>
-            <p>Le flux est le suivant :</p>
-            <ol>
-                <li>Un développeur pousse du code sur la branche principale (`main`) du dépôt GitHub.</li>
-                <li>GitHub Actions se déclenche automatiquement.</li>
-                <li><strong>Intégration Continue (CI) :</strong>
-                    <ul>
-                        <li>L'environnement est configuré.</li>
-                        <li>Les tests unitaires sont exécutés. Si un test échoue, le pipeline s'arrête.</li>
-                    </ul>
-                </li>
-                <li><strong>Déploiement Continu (CD) :</strong>
-                    <ul>
-                        <li>Si les tests passent, Le code est téléversé sur notre plateforme cloud.</li>
-                        <li>Un service Linux met en route l'API.</li>
-                    </ul>
-                </li>
-            </ol>
-            <figure>
-                <img src="<!-- CHEMIN_VERS_IMAGE_GITHUB_ACTIONS_PIPELINE.png -->" alt="Pipeline CI/CD avec GitHub Actions" class="screenshot">
-                <figcaption>Figure 7 : Visualisation du pipeline CI/CD dans GitHub Actions, montrant les étapes de test, build et déploiement.</figcaption>
-            </figure>
-            <p>
-                Cette automatisation réduit les erreurs humaines, accélère les mises en production et garantit que seule une version testée et fonctionnelle du code est déployée.
-            </p>
-
-            <h4>5. Suivi de la Performance en Production avec Azure Application Insights</h4>
-            <p>
-                Une fois le modèle en production, il est vital de surveiller son comportement et sa performance. Nous avons utilisé Azure Application Insights pour cela.
-            </p>
-            <ul>
-                <li>
-                    <strong>Traces des prédictions mal évaluées par l'utilisateur :</strong> Nous avons développé une petite interface locale (avec Streamlit) qui appelle l'API. Après chaque prédiction, l'utilisateur peut indiquer si elle était correcte ou non. En cas d'erreur signalée, une trace est envoyée à Application Insights, contenant le texte du tweet et la prédiction erronée.
-                    <figure>
-                        <img src="<!-- CHEMIN_VERS_IMAGE_APP_INSIGHTS_TRACES.png -->" alt="Traces de feedback dans Azure Application Insights" class="screenshot">
-                        <figcaption>Figure 8 : Exemples de traces dans Application Insights signalant des prédictions incorrectes selon l'utilisateur.</figcaption>
-                    </figure>
-                </li>
-                <li>
-                    <strong>Alertes proactives :</strong> Nous avons configuré une alerte dans Application Insights qui se déclenche si un nombre trop important de tweets sont signalés comme mal prédits sur une courte période (par exemple, 3 tweets mal prédits en 5 minutes). Cette alerte peut notifier l'équipe par email ou SMS, permettant une réaction rapide.
-                    <figure>
-                        <img src="<!-- CHEMIN_VERS_IMAGE_APP_INSIGHTS_ALERTE_CONFIG.png -->" alt="Configuration d'alerte dans Azure Application Insights" class="screenshot">
-                        <figcaption>Figure 9 : Configuration d'une alerte dans Azure Application Insights pour un nombre élevé de mauvaises prédictions.</figcaption>
-                    </figure>
-                </li>
-            </ul>
-
-            <h4>6. Vers l'Amélioration Continue du Modèle</h4>
-            <p>
-                Les données et les alertes collectées via Application Insights sont précieuses. Elles alimentent une boucle d'amélioration continue :
-            </p>
-            <ol>
-                <li><strong>Collecte :</strong> Les tweets mal prédits sont identifiés.</li>
-                <li><strong>Analyse :</strong> L'équipe IA analyse ces erreurs. Sont-elles dues à de nouveaux types de langage, à du sarcasme, à des sujets émergents ?</li>
-                <li><strong>Ré-étiquetage :</strong> Si nécessaire, ces données sont correctement étiquetées.</li>
-                <li><strong>Ré-entraînement :</strong> Le modèle est ré-entraîné avec ces nouvelles données (et potentiellement des améliorations de l'architecture).</li>
-                <li><strong>Ré-évaluation :</strong> Les performances du nouveau modèle sont validées.</li>
-                <li><strong>Re-déploiement :</strong> Le nouveau modèle amélioré est déployé via le pipeline CI/CD.</li>
-            </ol>
-            <p>Cette boucle garantit que le modèle reste pertinent et performant dans le temps.</p>
-            <figure>
-                <img src="<!-- CHEMIN_VERS_IMAGE_BOUCLE_AMELIORATION_CONTINUE.png -->" alt="Boucle d'amélioration continue du modèle" class="screenshot">
-                <figcaption>Figure 10 : La boucle de feedback pour l'amélioration continue du modèle.</figcaption>
-            </figure>
-
-
-            <h2>Le Prototype en Action : Tester l'API de Sentiment</h2>
-            <p>
-                L'API de prédiction du modèle "sur mesure avancé" est désormais déployée sur <code><!-- PLATEFORME_CLOUD (ex: Azure Web App) --></code> et accessible via un endpoint sécurisé. Pour faciliter les tests et la collecte de feedback, nous avons développé une interface simple avec Streamlit.
-            </p>
-            <figure>
-                <img src="<!-- CHEMIN_VERS_IMAGE_STREAMLIT_INTERFACE.png -->" alt="Interface de test Streamlit pour l'API" class="screenshot">
-                <figcaption>Figure 11 : L'interface Streamlit permet de saisir un tweet, d'obtenir la prédiction de sentiment et de fournir un retour sur sa pertinence.</figcaption>
-            </figure>
-            <p>
-                L'utilisateur saisit un tweet, l'interface appelle l'API, affiche le sentiment prédit, puis demande à l'utilisateur si la prédiction est correcte. Ce feedback, comme mentionné, est crucial pour le suivi et l'amélioration du modèle.
-            </p>
-
-            <h2>Conclusion : Une Base Solide pour l'Avenir</h2>
-            <p>
-                Ce projet pour Air Paradis a permis de développer un prototype fonctionnel d'analyse de sentiments, mais plus important encore, il a démontré la puissance d'une démarche MLOps bien structurée. En combinant des techniques de modélisation avancées avec des pratiques d'ingénierie logicielle robustes (suivi des expérimentations, CI/CD, monitoring), nous avons jeté les bases d'un produit IA fiable, évolutif et capable de s'améliorer continuellement.
-            </p>
-            <p>
-                Pour Air Paradis, c'est un premier pas vers une meilleure compréhension et gestion de sa e-réputation. Pour MIC, c'est une nouvelle illustration de notre capacité à livrer des solutions d'IA de bout en bout, de la conception à la mise en production, en adoptant les meilleures pratiques du secteur. Le MLOps n'est plus une option, mais une nécessité pour quiconque souhaite réellement tirer parti de l'intelligence artificielle en entreprise.
-            </p>
-            <hr>
-            <p><em>Vous souhaitez discuter de la manière dont l'IA et le MLOps peuvent transformer votre entreprise ? <a href="<!-- LIEN_CONTACT_MIC -->">Contactez-nous chez MIC !</a></em></p>
         </article>
     </div>
 
     <footer>
-        <p>© <!-- ANNEE_COURANTE --> Marketing Intelligence Consulting (MIC). Tous droits réservés.</p>
+        <p>Documentation technique du projet d'analyse de sentiments - LECROART Antoine - 2025></p>
     </footer>
 </body>
 </html>
-
-    

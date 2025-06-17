@@ -1,0 +1,15 @@
+artifact_uri: file:///c:/Users/LeBonCassoulet/Documents/GitHub/Projet_Analyse_Sentiment/Mod%C3%A9lisation/mlruns/604306899295521234/2ee68e49a35342dead68760f3271964b/artifacts
+end_time: 1750181466351
+entry_point_name: ''
+experiment_id: '604306899295521234'
+lifecycle_stage: active
+run_id: 2ee68e49a35342dead68760f3271964b
+run_name: gregarious-cat-887
+run_uuid: 2ee68e49a35342dead68760f3271964b
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1750181395415
+status: 3
+tags: []
+user_id: LeBonCassoulet

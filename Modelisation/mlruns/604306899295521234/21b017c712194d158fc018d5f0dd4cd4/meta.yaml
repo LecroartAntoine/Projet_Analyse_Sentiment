@@ -1,0 +1,15 @@
+artifact_uri: file:///c:/Users/LeBonCassoulet/Documents/GitHub/Projet_Analyse_Sentiment/Mod%C3%A9lisation/mlruns/604306899295521234/21b017c712194d158fc018d5f0dd4cd4/artifacts
+end_time: 1750177924243
+entry_point_name: ''
+experiment_id: '604306899295521234'
+lifecycle_stage: active
+run_id: 21b017c712194d158fc018d5f0dd4cd4
+run_name: LSTM_GloVe_Embeddings
+run_uuid: 21b017c712194d158fc018d5f0dd4cd4
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1750177774464
+status: 4
+tags: []
+user_id: LeBonCassoulet

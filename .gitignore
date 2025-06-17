@@ -162,3 +162,4 @@ Modelisation/glove.6B.300d.txt
 Modelisation/raw_dataset.csv
 
 *.h5
+Modelisation/data.csv

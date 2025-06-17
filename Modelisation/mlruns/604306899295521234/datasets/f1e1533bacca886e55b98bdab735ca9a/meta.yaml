@@ -1,0 +1,11 @@
+digest: b5fd0863
+name: dataset
+profile: '{"features_shape": [1120000, 20], "features_size": 22400000, "features_nbytes":
+  89600000, "targets_shape": [1120000], "targets_size": 1120000, "targets_nbytes":
+  8960000}'
+schema: '{"mlflow_tensorspec": {"features": "[{\"type\": \"tensor\", \"tensor-spec\":
+  {\"dtype\": \"int32\", \"shape\": [-1, 20]}}]", "targets": "[{\"type\": \"tensor\",
+  \"tensor-spec\": {\"dtype\": \"int64\", \"shape\": [-1]}}]"}}'
+source: '{"tags": {"mlflow.user": "LeBonCassoulet", "mlflow.source.name": "c:\\Users\\LeBonCassoulet\\Documents\\GitHub\\OpenClassrooms\\Projet_7\\.venv\\lib\\site-packages\\ipykernel_launcher.py",
+  "mlflow.source.type": "LOCAL"}}'
+source_type: code

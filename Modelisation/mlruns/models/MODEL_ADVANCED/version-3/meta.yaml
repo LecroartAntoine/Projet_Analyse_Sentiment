@@ -1,0 +1,14 @@
+aliases: []
+creation_timestamp: 1750186596577
+current_stage: None
+description: null
+last_updated_timestamp: 1750186596577
+name: MODEL_ADVANCED
+run_id: 62b7b12d38624eb4959f52a64e2d39f4
+run_link: null
+source: file:///c:/Users/LeBonCassoulet/Documents/GitHub/Projet_Analyse_Sentiment/Modelisation/mlruns/604306899295521234/62b7b12d38624eb4959f52a64e2d39f4/artifacts/model
+status: READY
+status_message: null
+storage_location: file:///c:/Users/LeBonCassoulet/Documents/GitHub/Projet_Analyse_Sentiment/Modelisation/mlruns/604306899295521234/62b7b12d38624eb4959f52a64e2d39f4/artifacts/model
+user_id: null
+version: 3

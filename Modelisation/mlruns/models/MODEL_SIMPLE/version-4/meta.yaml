@@ -1,0 +1,14 @@
+aliases: []
+creation_timestamp: 1750091511779
+current_stage: None
+description: null
+last_updated_timestamp: 1750091511779
+name: MODEL_SIMPLE
+run_id: 21732a2596334f4eb51a8c55b107d02e
+run_link: null
+source: file:///c:/Users/LeBonCassoulet/Documents/GitHub/Projet_Analyse_Sentiment/Mod%C3%A9lisation/mlruns/897408299388468996/21732a2596334f4eb51a8c55b107d02e/artifacts/logistic-regression-model
+status: READY
+status_message: null
+storage_location: file:///c:/Users/LeBonCassoulet/Documents/GitHub/Projet_Analyse_Sentiment/Mod%C3%A9lisation/mlruns/897408299388468996/21732a2596334f4eb51a8c55b107d02e/artifacts/logistic-regression-model
+user_id: null
+version: 4
