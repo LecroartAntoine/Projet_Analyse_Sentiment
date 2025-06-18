@@ -27,7 +27,7 @@
 
 ### 1. Point de Terminaison Racine
 
-*   **Endpoint** : `GET /`
+*   **Endpoint** : `GET http://cityhand.fr:8000/`
 *   **Description** : Un simple point de terminaison de bienvenue pour vérifier que l'API est en cours d'exécution.
 *   **Réponse** :
     ```json
@@ -38,7 +38,7 @@
 
 ### 2. Prédire le Sentiment
 
-*   **Endpoint** : `POST /predict`
+*   **Endpoint** : `POST http://cityhand.fr:8000/predict`
 *   **Description** : Analyse le sentiment d'une chaîne de texte donnée.
 *   **Corps de la Requête** :
     ```json
@@ -48,7 +48,7 @@
     ```
 *   **Exemple de Requête (`curl`)** :
     ```bash
-    curl -X POST "http://127.0.0.1:8000/predict" \
+    curl -X POST "http://cityhand.fr:8000/predict" \
     -H "Content-Type: application/json" \
     -d '{"text": "J''adore cette compagnie aérienne, le service était incroyable !"}'
     ```
@@ -63,7 +63,7 @@
 
 ### 3. Enregistrer un Retour Utilisateur
 
-*   **Endpoint** : `POST /feedback`
+*   **Endpoint** : `POST http://cityhand.fr:8000/feedback`
 *   **Description** : Permet aux utilisateurs de signaler une prédiction incorrecte. Si une erreur de prédiction est signalée, un avertissement (`WARNING`) est enregistré dans Azure Application Insights.
 *   **Corps de la Requête** :
     ```json
@@ -83,7 +83,7 @@
 
 ### 4. Contenu Statique
 
-*   **Endpoint** : `GET /blog`
+*   **Endpoint** : `GET http://cityhand.fr:8000/blog`
 *   **Description** : Sert un article de blog statique au format HTML.
 *   **Réponse** : Retourne le fichier `static/article.html`.
 
