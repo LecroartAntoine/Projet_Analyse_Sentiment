@@ -39,6 +39,7 @@ api = FastAPI()
 
 # Télécharge les ressources NLTK nécessaires si elles ne sont pas déjà présentes.
 nltk.download("punkt")
+nltk.download('punkt_tab')
 nltk.download("wordnet")
 nltk.download("omw-1.4")
 
