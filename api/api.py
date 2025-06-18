@@ -9,7 +9,6 @@ import pickle
 import re
 import nltk
 from nltk.stem import WordNetLemmatizer
-from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 import contractions
 import traceback
@@ -39,23 +38,12 @@ logger.setLevel(logging.INFO)
 api = FastAPI()
 
 # Télécharge les ressources NLTK nécessaires si elles ne sont pas déjà présentes.
-try:
-    stopwords.words("english")
-except LookupError:
-    nltk.download("stopwords")
-try:
-    word_tokenize("test")
-except LookupError:
-    nltk.download("punkt")
-try:
-    WordNetLemmatizer().lemmatize("cats")
-except LookupError:
-    nltk.download("wordnet")
-    nltk.download("omw-1.4")
+nltk.download("punkt")
+nltk.download("wordnet")
+nltk.download("omw-1.4")
 
 # Initialise les composants globaux pour le traitement du texte.
 lemmatizer = WordNetLemmatizer()
-stop_words = set(stopwords.words("english"))
 
 # Charge le modèle de prédiction et le tokenizer.
 try:
