@@ -163,3 +163,4 @@ Modelisation/raw_dataset.csv
 
 *.h5
 Modelisation/data.csv
+app/data.csv
